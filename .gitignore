@@ -1,0 +1,25 @@
+# OS
+.DS_Store
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Knowledge site (Astro)
+knowledge/node_modules/
+knowledge/dist/
+knowledge/.astro/
+
+# Brand tooling (kept out of the repo; assets live in public/)
+brand/Figtree.ttf
+brand/wm.json
+
+# Editors
+.idea/
+*.swp
