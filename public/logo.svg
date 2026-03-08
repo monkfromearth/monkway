@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160" role="img" aria-label="monkway mark">
+  <defs>
+    <linearGradient id="mw" x1="40" y1="130" x2="120" y2="46" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#E9A294"/><stop offset=".4" stop-color="#C2A4CD"/>
+      <stop offset=".7" stop-color="#A2ABDE"/><stop offset="1" stop-color="#88B2EC"/>
+    </linearGradient>
+  </defs>
+  <path d="M118,48 A50,50 0 1 0 118,112" fill="none"
+        stroke="url(#mw)" stroke-width="13" stroke-linecap="round"/>
+  <circle cx="120" cy="80" r="9" fill="#C96F5A"/>
+</svg>
