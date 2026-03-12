@@ -1,0 +1,43 @@
+name: CI
+
+# Verifies the knowledge site builds and the Python package lints + tests on every push and PR.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  knowledge-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+
+      - name: Install dependencies
+        working-directory: knowledge
+        run: bun install --frozen-lockfile
+
+      - name: Build knowledge site
+        working-directory: knowledge
+        run: bun run build
+
+  python:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Sync
+        run: uv sync --frozen
+
+      - name: Lint
+        run: uv run ruff check
+
+      - name: Test
+        run: uv run pytest

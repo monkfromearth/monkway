@@ -1,0 +1,24 @@
+---
+/**
+ * Small colored tag pill.
+ */
+interface Props {
+  variant: 'concepts' | 'math' | 'intuition' | 'exercise' | 'glossary' | 'links' | 'default';
+}
+
+const { variant = 'default' } = Astro.props;
+
+const variantClasses: Record<string, string> = {
+  concepts: 'text-mt-muted bg-stone-100',
+  math: 'text-mt-lav bg-mt-lavLight',
+  intuition: 'text-mt-blue bg-mt-blueLight',
+  exercise: 'text-mt-green bg-mt-greenLight',
+  glossary: 'text-mt-rose bg-mt-roseLight',
+  links: 'text-mt-muted bg-stone-100',
+  default: 'text-mt-muted bg-stone-100',
+};
+---
+
+<span class={`tag px-2 py-0.5 rounded-full ${variantClasses[variant] || variantClasses.default}`}>
+    <slot />
+</span>

@@ -1,0 +1,31 @@
+---
+/**
+ * Prev/next navigation at bottom of lessons.
+ */
+interface Props {
+  prevHref?: string;
+  prevLabel?: string;
+  nextHref?: string;
+  nextLabel?: string;
+}
+
+const { prevHref, prevLabel, nextHref, nextLabel } = Astro.props;
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+const prev = prevHref ? base + prevHref : undefined;
+const next = nextHref ? base + nextHref : undefined;
+---
+
+<nav class="flex items-center justify-between pt-8 border-t border-mt-border">
+    {prev ? (
+        <a href={prev} class="flex items-center gap-2 text-mt-muted hover:text-mt-text transition-colors text-sm">
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
+            {prevLabel}
+        </a>
+    ) : <div />}
+    {next ? (
+        <a href={next} class="flex items-center gap-2 text-mt-accent hover:text-mt-accent/80 transition-colors text-sm font-semibold">
+            {nextLabel}
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
+        </a>
+    ) : <div />}
+</nav>

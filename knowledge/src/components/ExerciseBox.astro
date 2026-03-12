@@ -1,0 +1,15 @@
+---
+/**
+ * Green left-border box. A thing for the reader to work out by hand or in code.
+ */
+interface Props {
+  title?: string;
+}
+
+const { title = "Try it yourself" } = Astro.props;
+---
+
+<div class="exercise-box bg-mt-greenLight/60 rounded-r-xl px-5 py-4">
+    <p class="text-sm font-semibold mb-1">{title}</p>
+    <slot />
+</div>

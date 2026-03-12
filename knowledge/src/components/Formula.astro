@@ -1,0 +1,19 @@
+---
+/**
+ * Centered formula display. Plain styled HTML (no KaTeX dependency), enough for
+ * the scalar-calculus math in this course. Put the expression in the slot; use
+ * <span class="var">x</span> for variables and <span class="op">+</span> for operators.
+ */
+interface Props {
+  caption?: string;
+}
+
+const { caption } = Astro.props;
+---
+
+<div class="my-5">
+    <div class="formula-box font-mono">
+        <slot />
+    </div>
+    {caption && <p class="text-center text-mt-muted text-xs mt-2">{caption}</p>}
+</div>

@@ -1,0 +1,57 @@
+---
+/**
+ * REFERENCE DEMO — copy this as the starting point for a new interactive demo.
+ * It shows the house pattern: a thing you DRAG on the figure (not a slider), the value
+ * SNAPPED to clean steps, the relationship drawn LIVE, and reduced-motion handled.
+ *
+ * This one: drag the dot along the track to set `a`; a derived value `a x a` updates.
+ * Replace the metaphor with whatever makes YOUR concept click.
+ */
+const W = 320, H = 90, pad = 20;
+const amax = 10;
+const sx = (a: number) => pad + (a / amax) * (W - 2 * pad);
+const start = 3;
+---
+
+<div class="mt-demo mt-example-demo my-6 bg-white border border-mt-border rounded-2xl p-6" data-w={W} data-pad={pad} data-amax={amax}>
+    <p class="text-xs uppercase tracking-wide text-mt-muted font-semibold mb-3 text-center">Drag the dot</p>
+
+    <svg viewBox={`0 0 ${W} ${H}`} class="w-full max-w-md mx-auto block" role="img" aria-label="drag a dot to set a value">
+        <line x1={pad} y1="45" x2={W - pad} y2="45" stroke="#EFE8E2" stroke-width="6" stroke-linecap="round" />
+        <circle data-dot cx={sx(start)} cy="45" r="11" fill="#fff" stroke="#C96F5A" stroke-width="3" class="mt-grab" />
+    </svg>
+
+    <p class="text-center font-mono text-sm mt-2">
+        a = <span data-a class="text-mt-accent font-semibold">3.0</span> &nbsp; a&times;a = <span data-sq class="text-mt-lav font-semibold">9.0</span>
+    </p>
+</div>
+
+<script>
+    // Import the shared helpers — never re-implement drag/clamp per demo.
+    import { gsap, draggable, clamp, REDUCED } from '../../lib/interact';
+
+    // Scope to every instance via the root class (so two on one page don't collide).
+    document.querySelectorAll<HTMLElement>('.mt-example-demo').forEach((root) => {
+        const W = Number(root.dataset.w), pad = Number(root.dataset.pad), amax = Number(root.dataset.amax);
+        const svg = root.querySelector<SVGSVGElement>('svg')!;
+        const dot = root.querySelector<SVGCircleElement>('[data-dot]')!;
+        const aEl = root.querySelector<HTMLElement>('[data-a]')!;
+        const sqEl = root.querySelector<HTMLElement>('[data-sq]')!;
+        const sx = (a: number) => pad + (a / amax) * (W - 2 * pad);
+        const invA = (px: number) => clamp((px - pad) / (W - 2 * pad) * amax, 0, amax);
+
+        let a = 3;
+        function render() {
+            aEl.textContent = a.toFixed(1);
+            sqEl.textContent = (a * a).toFixed(1);
+            // animate position unless the user prefers reduced motion
+            const to = { attr: { cx: sx(a) } };
+            REDUCED ? gsap.set(dot, to) : gsap.to(dot, { ...to, duration: 0.15, overwrite: true });
+        }
+
+        // direct manipulation: draggable() hands you svg-space (x, y); map x -> value, SNAP to 0.5 steps
+        draggable(svg, dot, (x) => { a = Math.round(invA(x) * 2) / 2; render(); });
+
+        render();
+    });
+</script>
