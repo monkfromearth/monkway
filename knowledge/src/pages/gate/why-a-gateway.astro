@@ -1,0 +1,113 @@
+---
+import '../../styles/global.css';
+import LessonLayout from '../../layouts/LessonLayout.astro';
+import LessonHeader from '../../components/LessonHeader.astro';
+import LessonNav from '../../components/LessonNav.astro';
+import InsightBox from '../../components/InsightBox.astro';
+import TagBadge from '../../components/TagBadge.astro';
+
+// Full static class strings so Tailwind's scanner keeps them (no runtime interpolation).
+const jobs = [
+  { unit: 'Unit 1', job: 'Greet at one door', plain: 'Proxy', desc: 'Every request arrives at the same place and gets forwarded on. One address for your whole app.', text: 'text-mt-accent', badge: 'bg-mt-accentLight text-mt-accent' },
+  { unit: 'Unit 3', job: 'Pick a path', plain: 'Routing', desc: 'Choose which provider handles each request, by cost, speed, or quality.', text: 'text-mt-lav', badge: 'bg-mt-lavLight text-mt-lav' },
+  { unit: 'Unit 2', job: 'Reroute when a door is shut', plain: 'Retry and fallback', desc: 'When a call fails, try again, or send it down a different path. The app never sees the stumble.', text: 'text-mt-blue', badge: 'bg-mt-blueLight text-mt-blue' },
+  { unit: 'Unit 4', job: 'Recognize a traveler', plain: 'Caching', desc: 'Remember answers already given, so the same question does not pay for the model twice.', text: 'text-mt-green', badge: 'bg-mt-greenLight text-mt-green' },
+  { unit: 'Unit 5', job: 'Keep the ledger', plain: 'Cost and limits', desc: 'Count every token, tally the spend, and stop anyone from running past their budget.', text: 'text-mt-rose', badge: 'bg-mt-roseLight text-mt-rose' },
+];
+---
+
+<LessonLayout title="Why a gateway at all" lessonNumber="0.3" section="The Gate">
+
+    <LessonHeader lessonNumber="0.3" title="Why a gateway at all" description="The problems one front door solves: provider lock-in, repeated failures, runaway cost.">
+        <TagBadge variant="concepts">concepts</TagBadge>
+        <TagBadge variant="default">8 min read</TagBadge>
+    </LessonHeader>
+
+    <!-- SECTION 1: life without a gateway -->
+    <section class="mb-14">
+        <h2 class="text-xl font-bold mb-4">What goes wrong without one.</h2>
+        <p class="text-mt-muted leading-relaxed mb-4">
+            You can call a provider directly. Plenty of apps do, and for a single small app it is fine. The trouble
+            shows up the moment you have more than one app, or you want to change anything.
+        </p>
+        <p class="text-mt-muted leading-relaxed mb-4">
+            Without a gateway, each app <strong>hardcodes one provider</strong>. The provider's address and quirks
+            are baked into the app, so switching means editing code in every app that calls it. You are locked in.
+        </p>
+        <p class="text-mt-muted leading-relaxed mb-4">
+            Each app also <strong>re-implements retries</strong> on its own. When a call fails, every app needs its
+            own logic to try again, and they all drift apart and get it slightly wrong in different ways.
+        </p>
+        <p class="text-mt-muted leading-relaxed mb-4">
+            They <strong>share no cache</strong>. App A asks a question and pays for it. App B asks the exact same
+            question an hour later and pays again, because neither knew the other had already seen the answer.
+        </p>
+        <p class="text-mt-muted leading-relaxed">
+            And there is <strong>no spend control</strong>. Nobody is counting across all the apps, so a runaway loop
+            in one of them can burn through the budget before anyone notices.
+        </p>
+    </section>
+
+    <!-- SECTION 2: life with a gateway -->
+    <section class="mb-14">
+        <h2 class="text-xl font-bold mb-4">What one front door fixes.</h2>
+        <p class="text-mt-muted leading-relaxed mb-4">
+            Put a gateway in the middle and every one of those problems moves to a single place where you solve it
+            once.
+        </p>
+        <ul class="space-y-2 text-mt-muted leading-relaxed mb-4">
+            <li class="flex gap-3"><span class="text-mt-accent font-bold">&rarr;</span><span><strong>Swap providers freely.</strong> Change the destination at the door, and every app follows. No app edits.</span></li>
+            <li class="flex gap-3"><span class="text-mt-accent font-bold">&rarr;</span><span><strong>Retry and fallback in one place.</strong> Write the retry logic once, at the door, and every app inherits it correctly.</span></li>
+            <li class="flex gap-3"><span class="text-mt-accent font-bold">&rarr;</span><span><strong>A cache shared across everything.</strong> One app's answer can serve another's identical question. You pay the model once.</span></li>
+            <li class="flex gap-3"><span class="text-mt-accent font-bold">&rarr;</span><span><strong>Cost and limits enforced centrally.</strong> One ledger counts every token from every app, and one set of caps holds the whole system to its budget.</span></li>
+        </ul>
+        <p class="text-mt-muted leading-relaxed">
+            The pattern underneath all four: a gateway is the one spot every request passes through, so it is the one
+            spot worth fixing.
+        </p>
+    </section>
+
+    <!-- SECTION 3: the gatekeeper's five jobs -->
+    <section class="mb-14">
+        <h2 class="text-xl font-bold mb-4">The gatekeeper's five jobs.</h2>
+        <p class="text-mt-muted leading-relaxed mb-6">
+            Everything a gateway does maps onto five things the gatekeeper monk does at the gate. The rest of the
+            course is one unit per job. Here is the whole map up front.
+        </p>
+
+        <div class="grid sm:grid-cols-2 gap-4">
+            {jobs.map((j) => (
+                <div class="bg-mt-card border border-mt-border rounded-2xl p-5">
+                    <div class="flex items-center gap-2 mb-2">
+                        <span class={`text-xs font-mono font-semibold ${j.text}`}>{j.unit}</span>
+                        <span class={`text-[10px] uppercase tracking-wide ${j.badge} rounded-full px-2 py-0.5 font-semibold`}>{j.plain}</span>
+                    </div>
+                    <p class="font-bold mb-1">{j.job}</p>
+                    <p class="text-sm text-mt-muted leading-relaxed">{j.desc}</p>
+                </div>
+            ))}
+        </div>
+
+        <InsightBox>
+            <p class="text-sm">A gateway is <strong>where you put everything that should be true for every
+            request</strong>, written once. Greet at the door, pick a path, reroute on failure, recognize a repeat,
+            keep the ledger. Five jobs, one door.</p>
+        </InsightBox>
+    </section>
+
+    <!-- Key takeaways -->
+    <section class="mb-14">
+        <h2 class="text-xl font-bold mb-4">Key takeaways</h2>
+        <div class="space-y-3">
+            <div class="flex items-start gap-3"><div class="w-6 h-6 rounded-full bg-mt-accentLight flex items-center justify-center flex-shrink-0 mt-0.5"><span class="text-mt-accent font-bold text-xs">1</span></div><p class="text-sm">Without a gateway, every app hardcodes a provider, re-implements retries, shares no cache, and has no central spend control. The pain grows with every new app.</p></div>
+            <div class="flex items-start gap-3"><div class="w-6 h-6 rounded-full bg-mt-accentLight flex items-center justify-center flex-shrink-0 mt-0.5"><span class="text-mt-accent font-bold text-xs">2</span></div><p class="text-sm">A gateway moves provider choice, retries, caching, and limits to one front door, so you solve each problem once for every request.</p></div>
+            <div class="flex items-start gap-3"><div class="w-6 h-6 rounded-full bg-mt-accentLight flex items-center justify-center flex-shrink-0 mt-0.5"><span class="text-mt-accent font-bold text-xs">3</span></div><p class="text-sm">The gatekeeper's five jobs (proxy, routing, retry and fallback, caching, cost and limits) are the five units ahead. Next we start with the first one: forwarding a request.</p></div>
+        </div>
+    </section>
+
+    <LessonNav
+        prevHref="/gate/the-request-journey" prevLabel="A request's journey"
+        nextHref="/proxy/what-a-proxy-does" nextLabel="What a proxy does"
+    />
+
+</LessonLayout>

@@ -101,5 +101,5 @@ MIT (see [`LICENSE`](./LICENSE)).
 ---
 
 <div align="center">
-  <sub>Built by <a href="https://monkfrom.earth">Sameer Khan (@monkfromearth)</a> &middot; part of the <a href="https://github.com/monkfromearth">monk</a> family of projects</sub>
+  <sub>Built by <a href="https://monkfrom.earth">Sameer Khan (@monkfromearth)</a> &middot; part of the <a href="https://github.com/monkfromearth">monk</a> family &middot; <a href="https://github.com/monkfromearth/monkway">source</a></sub>
 </div>

@@ -11,12 +11,12 @@ const jobs = [
 ];
 
 const units = [
-  { n: '0', t: 'The gate', d: 'What a gateway is, and why one door in front of many models.' },
-  { n: '1', t: 'The proxy', d: 'Forwarding a request, and what "the same API" really means.' },
-  { n: '2', t: 'When it fails', d: 'Retries, backoff and jitter, timeouts, and idempotency.' },
-  { n: '3', t: 'Choosing a path', d: 'Routing policy: cost vs latency vs quality, and fallback.' },
-  { n: '4', t: 'Remembering answers', d: 'Exact vs semantic caching, embeddings, nearest-neighbor lookup.' },
-  { n: '5', t: 'The ledger', d: 'Token accounting, cost, rate limits, and per-key budgets.' },
+  { n: '0', t: 'The gate', d: 'What a gateway is, and why one door in front of many models.', href: '/gate/what-a-gateway-is' },
+  { n: '1', t: 'The proxy', d: 'Forwarding a request, and what "the same API" really means.', href: '/proxy/what-a-proxy-does' },
+  { n: '2', t: 'When it fails', d: 'Retries, backoff and jitter, timeouts, and idempotency.', href: '/failure/ways-a-call-fails' },
+  { n: '3', t: 'Choosing a path', d: 'Routing policy: cost vs latency vs quality, and fallback.', href: '/routing/routing-policy' },
+  { n: '4', t: 'Remembering answers', d: 'Exact vs semantic caching, embeddings, nearest-neighbor lookup.', href: '/cache/exact-match-cache' },
+  { n: '5', t: 'The ledger', d: 'Token accounting, cost, rate limits, and per-key budgets.', href: '/ledger/tokens-and-cost' },
 ];
 ---
 
@@ -39,7 +39,7 @@ const units = [
     <div class="max-w-5xl mx-auto px-6 py-3 flex items-center justify-between">
       <img src={base + "/logo-wordmark.svg"} alt="monkway" class="h-7" />
       <div class="flex items-center gap-5 text-sm text-mt-muted">
-        <a href="#course" class="hover:text-mt-text transition-colors">Course</a>
+        <a href={base + "/learn"} class="hover:text-mt-text transition-colors">Course</a>
         <a href="https://github.com/monkfromearth/monkway/blob/main/docs/roadmap/index.md" class="hover:text-mt-text transition-colors">Roadmap</a>
         <a href="https://github.com/monkfromearth/monkway" class="hover:text-mt-text transition-colors">GitHub</a>
       </div>
@@ -58,7 +58,7 @@ const units = [
       open, and taught one piece at a time.
     </p>
     <div class="flex items-center justify-center gap-3">
-      <a href="#course" class="px-5 py-2.5 rounded-lg bg-mt-accent text-white font-semibold text-sm hover:opacity-90 transition-opacity">The course</a>
+      <a href={base + "/learn"} class="px-5 py-2.5 rounded-lg bg-mt-accent text-white font-semibold text-sm hover:opacity-90 transition-opacity">Start the course</a>
       <a href="https://github.com/monkfromearth/monkway" class="px-5 py-2.5 rounded-lg border border-mt-border bg-white font-semibold text-sm hover:border-mt-accent transition-colors">View on GitHub</a>
     </div>
   </header>
@@ -109,30 +109,36 @@ const units = [
   <section id="course" class="max-w-3xl mx-auto px-6 py-14 border-t border-mt-border">
     <div class="flex items-center justify-between mb-2">
       <p class="text-xs font-mono uppercase tracking-widest text-mt-accent">The course</p>
-      <span class="text-xs font-mono px-2 py-0.5 rounded bg-mt-amberLight text-mt-amber font-semibold">in progress</span>
+      <span class="text-xs font-mono px-2 py-0.5 rounded bg-mt-greenLight text-mt-green font-semibold">19 lessons</span>
     </div>
     <h2 class="text-2xl font-bold mb-4">What you'll learn</h2>
     <p class="text-mt-muted leading-relaxed mb-8 max-w-2xl">
       An interactive course that teaches the concepts behind monkway, then leaves the implementation to you,
-      which is where the understanding sticks. The lessons are being written; here is the shape.
+      which is where the understanding sticks. Six units, nineteen lessons, each with a demo you can drive.
+      Start at the gate.
     </p>
     <ol class="space-y-3">
       {units.map((u) => (
-        <li class="flex items-start gap-4 bg-mt-card border border-mt-border rounded-xl p-5">
-          <span class="shrink-0 w-9 h-9 rounded-lg bg-mt-bg border border-mt-border flex items-center justify-center font-mono text-sm text-mt-muted">{u.n}</span>
-          <div>
-            <p class="font-semibold">{u.t}</p>
-            <p class="text-sm text-mt-muted leading-relaxed">{u.d}</p>
-          </div>
+        <li>
+          <a href={base + u.href} class="flex items-start gap-4 bg-mt-card border border-mt-border rounded-xl p-5 hover:border-mt-accent transition-colors group">
+            <span class="shrink-0 w-9 h-9 rounded-lg bg-mt-bg border border-mt-border flex items-center justify-center font-mono text-sm text-mt-muted">{u.n}</span>
+            <div>
+              <p class="font-semibold group-hover:text-mt-accent transition-colors">{u.t}</p>
+              <p class="text-sm text-mt-muted leading-relaxed">{u.d}</p>
+            </div>
+          </a>
         </li>
       ))}
     </ol>
+    <div class="mt-6 text-center">
+      <a href={base + "/learn"} class="text-sm font-semibold text-mt-accent hover:underline">See the full course map &rarr;</a>
+    </div>
   </section>
 
   <!-- footer -->
   <footer class="border-t border-mt-border py-8 mt-6 text-center text-mt-muted text-sm">
     <p>
-      Built by <a href="https://monkfrom.earth" class="text-mt-accent hover:underline">Sameer Khan</a>
+      Built by <a href="https://monkfrom.earth" class="text-mt-accent hover:underline">Sameer Khan (@monkfromearth)</a>
       &middot; part of the <a href="https://github.com/monkfromearth" class="text-mt-accent hover:underline">monk</a> family
       &middot; <a href="https://github.com/monkfromearth/monkway" class="text-mt-accent hover:underline">source</a>
     </p>

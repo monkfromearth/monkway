@@ -1,0 +1,136 @@
+---
+import '../../styles/global.css';
+import LessonLayout from '../../layouts/LessonLayout.astro';
+import LessonHeader from '../../components/LessonHeader.astro';
+import LessonNav from '../../components/LessonNav.astro';
+import InsightBox from '../../components/InsightBox.astro';
+import TagBadge from '../../components/TagBadge.astro';
+import GateDoorDemo from '../../components/demos/GateDoorDemo.astro';
+---
+
+<LessonLayout title="What a gateway is" lessonNumber="0.1" section="The Gate">
+
+    <LessonHeader lessonNumber="0.1" title="What a gateway is" description="One door in front of many models. What an LLM gateway is, and the one job that defines it.">
+        <TagBadge variant="concepts">concepts</TagBadge>
+        <TagBadge variant="default">9 min read</TagBadge>
+    </LessonHeader>
+
+    <!-- SECTION 1: the analogy -->
+    <section class="mb-14">
+        <h2 class="text-xl font-bold mb-4">You talk to one thing. It deals with the rest.</h2>
+        <p class="text-mt-muted leading-relaxed mb-4">
+            Think of a hotel concierge. You want a dinner table, a taxi, and tickets for a show. You do not call
+            three restaurants, two cab companies, and a box office yourself. You tell the concierge once, and the
+            concierge talks to all of them behind the desk. To you it feels like one helpful person. Behind the
+            desk it is a web of phone calls you never see.
+        </p>
+        <p class="text-mt-muted leading-relaxed mb-4">
+            A travel-booking site works the same way. You search one box, and it quietly queries a dozen airlines,
+            then hands you one clean list. One front desk, many suppliers.
+        </p>
+        <p class="text-mt-muted leading-relaxed">
+            In our story, that front desk is the <strong>gatekeeper monk</strong>. Every traveler arrives at one
+            door. He greets each one, and he is the only one who knows what lies down each path behind the gate. An
+            <strong>LLM gateway</strong> is that gatekeeper for AI models.
+        </p>
+    </section>
+
+    <!-- SECTION 2: the definition -->
+    <section class="mb-14">
+        <h2 class="text-xl font-bold mb-4">One API in front of many providers.</h2>
+        <p class="text-mt-muted leading-relaxed mb-4">
+            Plainly: an LLM gateway is a single place you send your request to, and it forwards that request to the
+            real AI provider for you. The precise version: a gateway is one API endpoint that sits in front of many
+            model providers, such as OpenAI, Anthropic, Google, or a model running on your own machine.
+        </p>
+        <p class="text-mt-muted leading-relaxed mb-4">
+            Your app never calls the providers directly. It calls the gateway. The gateway calls the real provider,
+            waits for the answer, and passes it back to you. From your app's point of view, there is only ever one
+            address to talk to.
+        </p>
+
+        <GateDoorDemo />
+
+        <p class="text-mt-muted leading-relaxed mb-4">
+            Toggle a provider down and send again. The door stays the same, but the request finds whichever path is
+            still open. That is the gatekeeper's job in one picture: one door, many providers behind it, and he
+            always knows where to send you.
+        </p>
+        <p class="text-mt-muted leading-relaxed">
+            Real products do exactly this. <strong>OpenRouter</strong> gives you one endpoint that reaches hundreds
+            of models. <strong>LiteLLM</strong> is an open-source gateway you run yourself.
+            <strong>Cloudflare AI Gateway</strong> sits in front of your provider calls as a managed layer. Different
+            shapes, same idea.
+        </p>
+    </section>
+
+    <!-- SECTION 3: why one door -->
+    <section class="mb-14">
+        <h2 class="text-xl font-bold mb-4">Why bother with one door?</h2>
+        <p class="text-mt-muted leading-relaxed mb-4">
+            Two reasons, and both come from having a single choke point that every request flows through.
+        </p>
+        <p class="text-mt-muted leading-relaxed mb-4">
+            First, <strong>you can swap providers without touching your app.</strong> If your app talks straight to
+            one provider, switching to another means editing the app. With a gateway in the middle, you change the
+            destination in one place and your app never notices. The model behind the door changed; the door did not.
+        </p>
+        <p class="text-mt-muted leading-relaxed">
+            Second, <strong>you can add features that should apply to every call, in one place.</strong> Retrying a
+            failed request, remembering a recent answer (caching), capping how much someone can spend (limits): if
+            every request passes through the same door, you build these once at the door instead of copying them
+            into every app. We spend the rest of the course on exactly these jobs.
+        </p>
+    </section>
+
+    <!-- SECTION 4: worked example -->
+    <section class="mb-14">
+        <h2 class="text-xl font-bold mb-4">Follow one request through.</h2>
+        <p class="text-mt-muted leading-relaxed mb-4">
+            Your app sends the gateway a small request: which model it wants, and the conversation so far.
+        </p>
+        <div class="bg-white border border-mt-border rounded-xl p-5 mb-4 font-mono text-sm overflow-x-auto">
+            <span class="text-mt-muted">// app -&gt; gateway</span><br />
+            &#123;<br />
+            &nbsp;&nbsp;"model": "gpt-4o-mini",<br />
+            &nbsp;&nbsp;"messages": [&#123; "role": "user", "content": "Hello" &#125;]<br />
+            &#125;
+        </div>
+        <p class="text-mt-muted leading-relaxed mb-4">
+            The gateway reads the model name, picks the matching provider, and forwards the request. The provider
+            runs the model and sends back a completion. The gateway hands that completion straight back to your app.
+        </p>
+        <div class="bg-white border border-mt-border rounded-xl p-5 mb-4 font-mono text-sm overflow-x-auto">
+            <span class="text-mt-muted">// gateway -&gt; app</span><br />
+            &#123;<br />
+            &nbsp;&nbsp;"choices": [&#123; "message": &#123; "role": "assistant", "content": "Hi there." &#125; &#125;]<br />
+            &#125;
+        </div>
+        <p class="text-mt-muted leading-relaxed">
+            Your app asked one address and got one answer. Whether the model lived at OpenAI, Anthropic, or on a box
+            in the next room is the gateway's business, not the app's.
+        </p>
+
+        <InsightBox>
+            <p class="text-sm">A gateway is <strong>one API in front of many providers</strong>. Your app talks to
+            the door; the door talks to the models. That single front door is the whole idea, and everything else in
+            this course hangs off it.</p>
+        </InsightBox>
+    </section>
+
+    <!-- Key takeaways -->
+    <section class="mb-14">
+        <h2 class="text-xl font-bold mb-4">Key takeaways</h2>
+        <div class="space-y-3">
+            <div class="flex items-start gap-3"><div class="w-6 h-6 rounded-full bg-mt-accentLight flex items-center justify-center flex-shrink-0 mt-0.5"><span class="text-mt-accent font-bold text-xs">1</span></div><p class="text-sm">An LLM gateway is a single API endpoint in front of many model providers. Your app calls the gateway; the gateway calls the real provider and returns the answer.</p></div>
+            <div class="flex items-start gap-3"><div class="w-6 h-6 rounded-full bg-mt-accentLight flex items-center justify-center flex-shrink-0 mt-0.5"><span class="text-mt-accent font-bold text-xs">2</span></div><p class="text-sm">One door means you can swap providers without touching your app, and add cross-cutting features like retries and caching in one place.</p></div>
+            <div class="flex items-start gap-3"><div class="w-6 h-6 rounded-full bg-mt-accentLight flex items-center justify-center flex-shrink-0 mt-0.5"><span class="text-mt-accent font-bold text-xs">3</span></div><p class="text-sm">Real gateways like OpenRouter, LiteLLM, and Cloudflare AI Gateway are all the same shape: one front door, many models behind it. Next we follow a single request all the way through.</p></div>
+        </div>
+    </section>
+
+    <LessonNav
+        prevHref="/learn" prevLabel="Course map"
+        nextHref="/gate/the-request-journey" nextLabel="A request's journey"
+    />
+
+</LessonLayout>

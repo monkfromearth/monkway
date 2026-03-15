@@ -1,0 +1,131 @@
+---
+/**
+ * GateDoorDemo — one door in front of three providers.
+ * Toggle providers up/down by clicking a node, then "Send request": a dot
+ * travels from the door to the FIRST provider that is up. Shows that one
+ * door always finds an open path while any provider is up.
+ */
+const W = 360, H = 220;
+// door on the left, three provider nodes stacked on the right
+const doorX = 56, doorY = 110;
+const nodeX = 290;
+const nodeYs = [50, 110, 170];
+---
+
+<div class="mt-demo mw-gatedoor-demo my-6 bg-white border border-mt-border rounded-2xl p-6"
+     data-doorx={doorX} data-doory={doorY} data-nodex={nodeX} data-nodeys={nodeYs.join(',')}>
+    <p class="text-xs uppercase tracking-wide text-mt-muted font-semibold mb-3 text-center">Click a provider to toggle it up or down, then send</p>
+
+    <svg viewBox={`0 0 ${W} ${H}`} class="w-full max-w-md mx-auto block" role="img" aria-label="one door routing to whichever provider is up">
+        <!-- lines from door to each node -->
+        {nodeYs.map((y, i) => (
+            <line data-link={i} x1={doorX + 14} y1={doorY} x2={nodeX - 16} y2={y} stroke="#EFE8E2" stroke-width="3" stroke-linecap="round" />
+        ))}
+
+        <!-- the gate / door -->
+        <rect x={doorX - 16} y={doorY - 32} width="32" height="64" rx="5" fill="#FBF4EE" stroke="#C96F5A" stroke-width="3" />
+        <circle cx={doorX + 7} cy={doorY} r="2.4" fill="#C96F5A" />
+        <text x={doorX} y={doorY + 50} text-anchor="middle" font-size="11" fill="#7A7068" font-family="monospace">gateway</text>
+
+        <!-- provider nodes -->
+        {nodeYs.map((y, i) => (
+            <g data-node={i} class="mt-grab" style="cursor:pointer">
+                <circle cx={nodeX} cy={y} r="16" fill="#E8F2EA" stroke="#5C9367" stroke-width="3" />
+                <text x={nodeX} y={y + 4} text-anchor="middle" font-size="11" fill="#5C9367" font-family="monospace" font-weight="600">{String.fromCharCode(65 + i)}</text>
+                <text data-status={i} x={nodeX + 24} y={y + 4} font-size="10" fill="#5C9367" font-family="monospace">up</text>
+            </g>
+        ))}
+
+        <!-- the travelling request dot (hidden until sent) -->
+        <circle data-dot cx={doorX + 14} cy={doorY} r="6" fill="#7B6CB5" opacity="0" />
+        <!-- the check that lands on the chosen provider -->
+        <text data-check x={nodeX} y={nodeYs[0] + 4} text-anchor="middle" font-size="14" fill="#5C9367" font-weight="700" opacity="0">&#10003;</text>
+    </svg>
+
+    <div class="flex items-center justify-center gap-4 mt-4">
+        <button data-send class="text-sm font-semibold bg-mt-accent text-white rounded-lg px-4 py-2 hover:bg-mt-accent/90 transition-colors">Send request</button>
+        <span data-result class="text-sm font-mono text-mt-muted">ready</span>
+    </div>
+</div>
+
+<script>
+    import { gsap, REDUCED } from '../../lib/interact';
+
+    document.querySelectorAll<HTMLElement>('.mw-gatedoor-demo').forEach((root) => {
+        const doorX = Number(root.dataset.doorx), doorY = Number(root.dataset.doory);
+        const nodeX = Number(root.dataset.nodex);
+        const nodeYs = (root.dataset.nodeys || '').split(',').map(Number);
+
+        const dot = root.querySelector<SVGCircleElement>('[data-dot]')!;
+        const check = root.querySelector<SVGTextElement>('[data-check]')!;
+        const result = root.querySelector<HTMLElement>('[data-result]')!;
+        const sendBtn = root.querySelector<HTMLButtonElement>('[data-send]')!;
+
+        // state: each provider up or down
+        const up = [true, true, true];
+
+        function paint() {
+            up.forEach((isUp, i) => {
+                const node = root.querySelector<SVGGElement>(`[data-node="${i}"]`)!;
+                const circle = node.querySelector('circle')!;
+                const label = node.querySelector('text')!;
+                const status = root.querySelector<SVGTextElement>(`[data-status="${i}"]`)!;
+                if (isUp) {
+                    circle.setAttribute('fill', '#E8F2EA'); circle.setAttribute('stroke', '#5C9367');
+                    label.setAttribute('fill', '#5C9367');
+                    status.textContent = 'up'; status.setAttribute('fill', '#5C9367');
+                } else {
+                    circle.setAttribute('fill', '#F0EDEA'); circle.setAttribute('stroke', '#B8B0A8');
+                    label.setAttribute('fill', '#B8B0A8');
+                    status.textContent = 'down'; status.setAttribute('fill', '#B8B0A8');
+                }
+            });
+        }
+
+        // toggle a provider up/down on click
+        up.forEach((_, i) => {
+            const node = root.querySelector<SVGGElement>(`[data-node="${i}"]`)!;
+            node.addEventListener('click', () => { up[i] = !up[i]; paint(); });
+        });
+
+        function send() {
+            const target = up.findIndex((u) => u);
+            // hide the previous check
+            gsap.set(check, { opacity: 0 });
+
+            if (target === -1) {
+                result.textContent = 'all providers down: no route';
+                result.setAttribute('class', 'text-sm font-mono text-mt-rose');
+                gsap.set(dot, { opacity: 0 });
+                return;
+            }
+
+            result.textContent = `routed to ${String.fromCharCode(65 + target)}`;
+            result.setAttribute('class', 'text-sm font-mono text-mt-green');
+
+            const ty = nodeYs[target];
+            const land = () => {
+                gsap.set(dot, { opacity: 0 });
+                check.setAttribute('y', String(ty + 4));
+                gsap.set(check, { opacity: 1 });
+            };
+
+            if (REDUCED) {
+                gsap.set(dot, { attr: { cx: nodeX - 18, cy: ty }, opacity: 0 });
+                land();
+                return;
+            }
+
+            gsap.set(dot, { attr: { cx: doorX + 14, cy: doorY }, opacity: 1 });
+            gsap.to(dot, {
+                attr: { cx: nodeX - 18, cy: ty },
+                duration: 0.6, ease: 'power2.inOut',
+                onComplete: land,
+            });
+        }
+
+        sendBtn.addEventListener('click', send);
+
+        paint();
+    });
+</script>

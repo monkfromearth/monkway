@@ -1,0 +1,145 @@
+---
+import '../../styles/global.css';
+import LessonLayout from '../../layouts/LessonLayout.astro';
+import LessonHeader from '../../components/LessonHeader.astro';
+import LessonNav from '../../components/LessonNav.astro';
+import InsightBox from '../../components/InsightBox.astro';
+import TagBadge from '../../components/TagBadge.astro';
+import StepNumber from '../../components/StepNumber.astro';
+---
+
+<LessonLayout title="A request's journey" lessonNumber="0.2" section="The Gate">
+
+    <LessonHeader lessonNumber="0.2" title="A request's journey" description="Follow one chat request from your app, through the gateway, to a provider and back.">
+        <TagBadge variant="concepts">concepts</TagBadge>
+        <TagBadge variant="default">8 min read</TagBadge>
+    </LessonHeader>
+
+    <!-- SECTION 1: anatomy of a request -->
+    <section class="mb-14">
+        <h2 class="text-xl font-bold mb-4">What a request is made of.</h2>
+        <p class="text-mt-muted leading-relaxed mb-4">
+            Before we trace the trip, look at what actually travels. A chat request has two parts: the
+            <strong>body</strong> (what you are asking) and the <strong>headers</strong> (who is asking).
+        </p>
+        <p class="text-mt-muted leading-relaxed mb-4">
+            The body says which model you want, the conversation so far (the <code>messages</code>), and a few dials
+            that shape the answer. The two you will meet first are <strong>temperature</strong> (how adventurous the
+            model is, from steady to creative) and <strong>max_tokens</strong> (a ceiling on how long the answer can
+            run). The headers carry your <strong>auth key</strong>, the secret that proves the request is allowed.
+        </p>
+        <div class="bg-white border border-mt-border rounded-xl p-5 mb-4 font-mono text-sm overflow-x-auto">
+            <span class="text-mt-muted">Authorization: Bearer sk-...your-key...</span><br /><br />
+            &#123;<br />
+            &nbsp;&nbsp;"model": "gpt-4o-mini",<br />
+            &nbsp;&nbsp;"messages": [&#123; "role": "user", "content": "Name one moon of Mars." &#125;],<br />
+            &nbsp;&nbsp;"temperature": 0.2,<br />
+            &nbsp;&nbsp;"max_tokens": 50<br />
+            &#125;
+        </div>
+        <p class="text-mt-muted leading-relaxed">
+            That is the whole package: a key in the header, a model and messages and a couple of dials in the body.
+            Now watch where it goes.
+        </p>
+    </section>
+
+    <!-- SECTION 2: the round trip -->
+    <section class="mb-14">
+        <h2 class="text-xl font-bold mb-4">The round trip, step by step.</h2>
+        <p class="text-mt-muted leading-relaxed mb-6">
+            One request, five stops. Notice that the gateway is the middle three. The client only ever sees the
+            first and the last.
+        </p>
+
+        <div class="space-y-5">
+            <div class="flex items-start gap-4">
+                <StepNumber number="1" color="accent" />
+                <div>
+                    <p class="font-semibold mb-1">The client sends the request.</p>
+                    <p class="text-sm text-mt-muted leading-relaxed">Your app sends the body and the auth header to
+                    the gateway's address. As far as the app knows, this is the whole journey: ask, wait, answer.</p>
+                </div>
+            </div>
+            <div class="flex items-start gap-4">
+                <StepNumber number="2" color="lav" />
+                <div>
+                    <p class="font-semibold mb-1">The gateway authenticates and picks a provider.</p>
+                    <p class="text-sm text-mt-muted leading-relaxed">The gatekeeper checks the key is valid, then
+                    reads the model name and decides which provider should handle it. For now, picking is simple: the
+                    model name maps to one provider. Unit 3 makes this choice smarter.</p>
+                </div>
+            </div>
+            <div class="flex items-start gap-4">
+                <StepNumber number="3" color="blue" />
+                <div>
+                    <p class="font-semibold mb-1">The gateway forwards to the provider.</p>
+                    <p class="text-sm text-mt-muted leading-relaxed">It sends the request on to the real provider,
+                    using the provider's own key, in the shape that provider expects. The next unit is all about this
+                    forwarding step.</p>
+                </div>
+            </div>
+            <div class="flex items-start gap-4">
+                <StepNumber number="4" color="green" />
+                <div>
+                    <p class="font-semibold mb-1">The provider runs the model and replies.</p>
+                    <p class="text-sm text-mt-muted leading-relaxed">The provider runs the model and returns a
+                    completion, plus a <strong>usage</strong> block that counts the tokens used: how many went in
+                    (<code>prompt_tokens</code>) and how many came out (<code>completion_tokens</code>). That count is
+                    what the bill is based on later.</p>
+                </div>
+            </div>
+            <div class="flex items-start gap-4">
+                <StepNumber number="5" color="accent" />
+                <div>
+                    <p class="font-semibold mb-1">The gateway returns the answer to the client.</p>
+                    <p class="text-sm text-mt-muted leading-relaxed">The gatekeeper passes the completion back to your
+                    app. The app gets one clean answer and never had to know which door it came from.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- SECTION 3: worked example of the response -->
+    <section class="mb-14">
+        <h2 class="text-xl font-bold mb-4">What comes back.</h2>
+        <p class="text-mt-muted leading-relaxed mb-4">
+            Here is a small response body for the request above. The answer is in <code>choices</code>, and the
+            token count is in <code>usage</code>.
+        </p>
+        <div class="bg-white border border-mt-border rounded-xl p-5 mb-4 font-mono text-sm overflow-x-auto">
+            &#123;<br />
+            &nbsp;&nbsp;"choices": [<br />
+            &nbsp;&nbsp;&nbsp;&nbsp;&#123; "message": &#123; "role": "assistant", "content": "Phobos." &#125; &#125;<br />
+            &nbsp;&nbsp;],<br />
+            &nbsp;&nbsp;"usage": &#123; "prompt_tokens": 14, "completion_tokens": 3 &#125;<br />
+            &#125;
+        </div>
+        <p class="text-mt-muted leading-relaxed">
+            Look at the two bodies side by side. The request had <code>model</code>, <code>messages</code>, and a few
+            dials. The response has <code>choices</code> and <code>usage</code>. Same family of shapes going in and
+            coming out, which is exactly why a gateway can sit in the middle without your app noticing.
+        </p>
+
+        <InsightBox>
+            <p class="text-sm">Same shape in, same shape out. The request and response have a predictable structure,
+            and <strong>the gateway's job is everything that happens between</strong>: authenticate, pick a provider,
+            forward, and hand the answer back.</p>
+        </InsightBox>
+    </section>
+
+    <!-- Key takeaways -->
+    <section class="mb-14">
+        <h2 class="text-xl font-bold mb-4">Key takeaways</h2>
+        <div class="space-y-3">
+            <div class="flex items-start gap-3"><div class="w-6 h-6 rounded-full bg-mt-accentLight flex items-center justify-center flex-shrink-0 mt-0.5"><span class="text-mt-accent font-bold text-xs">1</span></div><p class="text-sm">A request is a body (model, messages, dials like temperature and max_tokens) plus headers (the auth key). The response carries the answer in choices and the token count in usage.</p></div>
+            <div class="flex items-start gap-3"><div class="w-6 h-6 rounded-full bg-mt-accentLight flex items-center justify-center flex-shrink-0 mt-0.5"><span class="text-mt-accent font-bold text-xs">2</span></div><p class="text-sm">The round trip is five stops: client sends, gateway authenticates and picks a provider, gateway forwards, provider replies with a completion and usage, gateway returns the answer.</p></div>
+            <div class="flex items-start gap-3"><div class="w-6 h-6 rounded-full bg-mt-accentLight flex items-center justify-center flex-shrink-0 mt-0.5"><span class="text-mt-accent font-bold text-xs">3</span></div><p class="text-sm">The client only sees the first and last stop. Everything in between is the gateway's work, which is what the rest of the course builds up.</p></div>
+        </div>
+    </section>
+
+    <LessonNav
+        prevHref="/gate/what-a-gateway-is" prevLabel="What a gateway is"
+        nextHref="/gate/why-a-gateway" nextLabel="Why a gateway at all"
+    />
+
+</LessonLayout>
