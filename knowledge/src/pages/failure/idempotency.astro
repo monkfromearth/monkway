@@ -1,0 +1,145 @@
+---
+import '../../styles/global.css';
+import LessonLayout from '../../layouts/LessonLayout.astro';
+import LessonHeader from '../../components/LessonHeader.astro';
+import LessonNav from '../../components/LessonNav.astro';
+import InsightBox from '../../components/InsightBox.astro';
+import ExerciseBox from '../../components/ExerciseBox.astro';
+import TagBadge from '../../components/TagBadge.astro';
+---
+
+<LessonLayout title="Idempotency: safe to retry?" lessonNumber="2.2" section="When It Fails">
+
+    <LessonHeader lessonNumber="2.2" title="Idempotency: safe to retry?" description="Retrying assumes that doing the call twice is harmless. Sometimes it is. Sometimes it double-charges a credit card.">
+        <TagBadge variant="concepts">concepts</TagBadge>
+        <TagBadge variant="default">8 min read</TagBadge>
+    </LessonHeader>
+
+    <!-- SECTION 1: hook -->
+    <section class="mb-14">
+        <h2 class="text-xl font-bold mb-4">Pressing the button twice.</h2>
+        <p class="text-mt-muted leading-relaxed mb-4">
+            Think about a lift. You press the call button, nothing seems to happen, so you press it again. No harm
+            done: the lift was already coming, and a second press changes nothing. Pressing it once or five times
+            lands you in the same place.
+        </p>
+        <p class="text-mt-muted leading-relaxed mb-4">
+            Now think about a "Buy now" button on a checkout page. It hangs. You press it again. If the site is
+            careless, you just bought the thing twice and got charged twice. Same gesture, very different outcome,
+            because this button does something with a lasting effect each time it is pressed.
+        </p>
+        <p class="text-mt-muted leading-relaxed">
+            That difference has a name. The lift button is <strong>idempotent</strong>: doing it again has the same
+            effect as doing it once. The buy button is not. Last lesson we learned that a timeout is safe to retry.
+            This lesson asks a different question: when you do retry, is doing the work twice actually harmless?
+        </p>
+    </section>
+
+    <!-- SECTION 2: the concept -->
+    <section class="mb-14">
+        <h2 class="text-xl font-bold mb-4">Idempotent means "again equals once."</h2>
+        <p class="text-mt-muted leading-relaxed mb-4">
+            A read is naturally idempotent. Asking "what is the balance?" twice gives you the balance twice and
+            changes nothing. Reading a page, fetching a record, looking something up: repeat it as often as you like,
+            the world is unchanged.
+        </p>
+        <p class="text-mt-muted leading-relaxed mb-4">
+            An action with a side effect usually is not. "Transfer ten dollars" run twice transfers twenty. "Send
+            this email" run twice sends two emails. "Book this flight" run twice books two seats. Each repeat leaves
+            a fresh dent in the world.
+        </p>
+        <p class="text-mt-muted leading-relaxed mb-4">
+            Here is the catch for retries. When an attempt times out, you often have no idea whether the work
+            already happened. Maybe the provider never got your request. Maybe it did the work and the answer got
+            lost on the way back. From where you sit, both look identical: silence. If the action was not idempotent,
+            a blind retry might be the second charge, not a harmless redo.
+        </p>
+        <InsightBox>
+            <p class="text-sm">A call is <strong>idempotent</strong> when doing it again has the same effect as doing
+            it once. Reads are idempotent for free. Actions with side effects are not, and those are the ones a
+            careless retry can double.</p>
+        </InsightBox>
+    </section>
+
+    <!-- SECTION 3: LLM calls specifically -->
+    <section class="mb-14">
+        <h2 class="text-xl font-bold mb-4">Where this bites an LLM gateway.</h2>
+        <p class="text-mt-muted leading-relaxed mb-4">
+            A plain completion is usually safe to retry. If you ask a model "summarize this paragraph" and the call
+            times out, retrying just gets you another summary. You spend a little extra money on tokens, but nothing
+            in the world broke. The result is just text handed back to you.
+        </p>
+        <p class="text-mt-muted leading-relaxed mb-4">
+            The danger shows up when a call has a side effect beyond returning text. Modern models can call tools:
+            the model decides to run a function you gave it. If that tool charges a card, sends a message, places an
+            order, or writes a row to a database, then the completion is no longer a harmless read. Retry it blindly
+            and you might charge the card twice or send the email twice. The text part was safe; the action the text
+            triggered was not.
+        </p>
+        <p class="text-mt-muted leading-relaxed">
+            So "is this retryable?" (last lesson) and "is this safe to repeat?" (this lesson) are two separate gates.
+            A call can pass the first and fail the second. A tool-calling request that times out is retryable in
+            principle, but not safe to blindly resend.
+        </p>
+    </section>
+
+    <!-- SECTION 4: idempotency keys -->
+    <section class="mb-14">
+        <h2 class="text-xl font-bold mb-4">The fix: an idempotency key.</h2>
+        <p class="text-mt-muted leading-relaxed mb-4">
+            You cannot always make an action idempotent on its own. But you can make the server recognize a repeat
+            and refuse to do the work twice. The tool for that is an <strong>idempotency key</strong>: a unique
+            string the client makes up and attaches to a request. It is a label that says "this is operation number
+            <span class="font-mono text-sm">abc</span>."
+        </p>
+        <p class="text-mt-muted leading-relaxed mb-4">
+            The server remembers keys it has already finished. The first time it sees a key, it does the work and
+            files the result under that key. If the same key arrives again, it skips the work entirely and hands back
+            the first result. The retry becomes safe because the server, not you, is the one that notices it is a
+            duplicate.
+        </p>
+        <div class="bg-white border border-mt-border rounded-xl p-5 mb-4 font-mono text-sm overflow-x-auto">
+            <span class="text-mt-muted">// first send</span><br />
+            POST /charge &nbsp; idempotency-key: <span class="text-mt-accent">abc</span><br />
+            &rarr; charges $10, stores result under <span class="text-mt-accent">abc</span><br />
+            <br />
+            <span class="text-mt-muted">// retry after a timeout, same key</span><br />
+            POST /charge &nbsp; idempotency-key: <span class="text-mt-accent">abc</span><br />
+            &rarr; sees <span class="text-mt-accent">abc</span> already done, returns the first result, charges nothing
+        </div>
+        <p class="text-mt-muted leading-relaxed">
+            Notice the key has to come from the client and stay the same across the retry. If you make a fresh key
+            for the retry, the server sees a brand-new operation and does the work again. Same key is the whole
+            point.
+        </p>
+
+        <ExerciseBox title="Which of these are safe to retry?">
+            <p class="text-sm text-mt-muted mb-2">Decide before you read on. For each, is a blind retry harmless?</p>
+            <ul class="text-sm text-mt-muted list-disc pl-5 space-y-1 mb-3">
+                <li>A pure completion: "rewrite this sentence more formally."</li>
+                <li>A request where the model calls a <span class="font-mono">book_flight</span> tool that reserves a seat.</li>
+            </ul>
+            <p class="text-sm text-mt-muted">
+                The first is safe. Worst case you pay for a few extra tokens and get another rewrite. The second is
+                not: a blind retry could book a second seat. That one needs an idempotency key (passed through to the
+                booking tool) so the second attempt is recognized as a duplicate and books nothing.
+            </p>
+        </ExerciseBox>
+    </section>
+
+    <!-- Key takeaways -->
+    <section class="mb-14">
+        <h2 class="text-xl font-bold mb-4">Key takeaways</h2>
+        <div class="space-y-3">
+            <div class="flex items-start gap-3"><div class="w-6 h-6 rounded-full bg-mt-accentLight flex items-center justify-center flex-shrink-0 mt-0.5"><span class="text-mt-accent font-bold text-xs">1</span></div><p class="text-sm">Idempotent means doing the call again has the same effect as doing it once. Reads are idempotent; actions with side effects usually are not.</p></div>
+            <div class="flex items-start gap-3"><div class="w-6 h-6 rounded-full bg-mt-accentLight flex items-center justify-center flex-shrink-0 mt-0.5"><span class="text-mt-accent font-bold text-xs">2</span></div><p class="text-sm">A plain LLM completion is safe to retry; you just pay for more tokens. A call that triggers a tool with a real side effect is not safe to blindly retry.</p></div>
+            <div class="flex items-start gap-3"><div class="w-6 h-6 rounded-full bg-mt-accentLight flex items-center justify-center flex-shrink-0 mt-0.5"><span class="text-mt-accent font-bold text-xs">3</span></div><p class="text-sm">An idempotency key (same client-supplied string across the retry) lets the server recognize a duplicate and return the first result instead of redoing the work.</p></div>
+        </div>
+    </section>
+
+    <LessonNav
+        prevHref="/failure/ways-a-call-fails" prevLabel="Ways a call fails"
+        nextHref="/failure/backoff-and-jitter" nextLabel="Backoff and jitter"
+    />
+
+</LessonLayout>

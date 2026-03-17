@@ -1,0 +1,151 @@
+---
+import '../../styles/global.css';
+import LessonLayout from '../../layouts/LessonLayout.astro';
+import LessonHeader from '../../components/LessonHeader.astro';
+import LessonNav from '../../components/LessonNav.astro';
+import InsightBox from '../../components/InsightBox.astro';
+import TagBadge from '../../components/TagBadge.astro';
+import ProxyTranslateDemo from '../../components/demos/ProxyTranslateDemo.astro';
+---
+
+<LessonLayout title="One API, many providers" lessonNumber="1.2" section="The Proxy">
+
+    <LessonHeader lessonNumber="1.2" title="One API, many providers" description="Every provider speaks a slightly different dialect. The gateway gives you one shape and translates.">
+        <TagBadge variant="concepts">concepts</TagBadge>
+        <TagBadge variant="default">9 min read</TagBadge>
+    </LessonHeader>
+
+    <!-- SECTION 1: the problem -->
+    <section class="mb-14">
+        <h2 class="text-xl font-bold mb-4">Same idea, three different dialects.</h2>
+        <p class="text-mt-muted leading-relaxed mb-4">
+            Every model provider wants the same basic thing from you: a model name, some messages, a cap on how
+            long the answer can run. But each one asks for it in its own words. OpenAI, Anthropic, and Google all
+            accept "a chat request," yet the address you post to and the field names you use are different in each.
+        </p>
+        <p class="text-mt-muted leading-relaxed mb-4">
+            That difference is small until it costs you. If your app speaks OpenAI's exact shape and you later
+            want to send some traffic to Anthropic (cheaper, or up when OpenAI is down), you cannot just point at
+            a new URL. The body is wrong. You would rewrite every call site to match the new dialect, then rewrite
+            them again for the next provider.
+        </p>
+
+        <InsightBox>
+            <p class="text-sm">Speaking each provider's raw shape directly couples your app to that provider. Switching providers turns into rewriting your app.</p>
+        </InsightBox>
+    </section>
+
+    <!-- SECTION 2: the fix -->
+    <section class="mb-14">
+        <h2 class="text-xl font-bold mb-4">One shape in, the right dialect out.</h2>
+        <p class="text-mt-muted leading-relaxed mb-4">
+            The gateway fixes this by exposing <strong>one schema</strong> to your app, and translating it to
+            whatever the chosen provider expects. Your app only ever learns one shape. Commonly that shape is the
+            OpenAI chat format, since most tools already speak it, but the point is that there is a single agreed
+            shape, whatever it is.
+        </p>
+        <p class="text-mt-muted leading-relaxed mb-4">
+            The piece that does the rewriting is the <strong>adapter</strong> (a translation layer). One adapter
+            per provider. It knows that "the system prompt" lives in the messages list for one provider and in a
+            top-level field for another, and it moves the values into the right slots before the call goes out.
+        </p>
+        <p class="text-mt-muted leading-relaxed mb-4">
+            The gatekeeper monk speaks one language at the gate. Behind the gate, he knows how to address each
+            room the way that room expects. The traveler never has to learn three sets of manners.
+        </p>
+
+        <ProxyTranslateDemo />
+
+        <InsightBox>
+            <p class="text-sm">One API in, many dialects out. The <strong>adapter</strong> is what lets you switch providers without touching your app.</p>
+        </InsightBox>
+    </section>
+
+    <!-- SECTION 3: worked example, the field-mapping table -->
+    <section class="mb-14">
+        <h2 class="text-xl font-bold mb-4">The same request, mapped by hand.</h2>
+        <p class="text-mt-muted leading-relaxed mb-4">
+            Start from one logical request your app sends:
+            <span class="font-mono text-sm">&#123; model, messages, system, max_tokens &#125;</span>.
+            Here is where each piece lands in each provider's request. Read it as "this field becomes that."
+        </p>
+
+        <div class="overflow-x-auto mb-4">
+            <table class="w-full text-sm border border-mt-border rounded-xl overflow-hidden">
+                <thead>
+                    <tr class="bg-mt-bg text-left">
+                        <th class="px-4 py-3 font-semibold">Canonical field</th>
+                        <th class="px-4 py-3 font-semibold">OpenAI</th>
+                        <th class="px-4 py-3 font-semibold">Anthropic</th>
+                        <th class="px-4 py-3 font-semibold">Google</th>
+                    </tr>
+                </thead>
+                <tbody class="font-mono text-xs">
+                    <tr class="border-t border-mt-border">
+                        <td class="px-4 py-3 text-mt-text">endpoint</td>
+                        <td class="px-4 py-3 text-mt-muted">/v1/chat/completions</td>
+                        <td class="px-4 py-3 text-mt-muted">/v1/messages</td>
+                        <td class="px-4 py-3 text-mt-muted">:generateContent</td>
+                    </tr>
+                    <tr class="border-t border-mt-border">
+                        <td class="px-4 py-3 text-mt-text">model</td>
+                        <td class="px-4 py-3 text-mt-muted">model: in body</td>
+                        <td class="px-4 py-3 text-mt-muted">model: in body</td>
+                        <td class="px-4 py-3 text-mt-muted">in the URL path</td>
+                    </tr>
+                    <tr class="border-t border-mt-border">
+                        <td class="px-4 py-3 text-mt-text">system prompt</td>
+                        <td class="px-4 py-3 text-mt-muted">role:"system" in messages</td>
+                        <td class="px-4 py-3 text-mt-muted">system: top-level field</td>
+                        <td class="px-4 py-3 text-mt-muted">systemInstruction</td>
+                    </tr>
+                    <tr class="border-t border-mt-border">
+                        <td class="px-4 py-3 text-mt-text">max tokens</td>
+                        <td class="px-4 py-3 text-mt-muted">max_tokens (optional)</td>
+                        <td class="px-4 py-3 text-mt-muted">max_tokens (required)</td>
+                        <td class="px-4 py-3 text-mt-muted">maxOutputTokens</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <p class="text-mt-muted leading-relaxed">
+            Notice the two things that bite. The system prompt lives in a different place in all three. And
+            Anthropic <em>requires</em> a max-tokens value where OpenAI treats it as optional, so the adapter has
+            to supply a sensible default rather than leave it out. Translation is not just renaming keys; it is
+            also filling gaps each dialect insists on.
+        </p>
+    </section>
+
+    <!-- SECTION 4: the payoff -->
+    <section class="mb-14">
+        <h2 class="text-xl font-bold mb-4">Why this shape of design pays off.</h2>
+        <p class="text-mt-muted leading-relaxed mb-4">
+            Once the adapter exists, the provider becomes a setting, not a rewrite. Send 90 percent of traffic to
+            one provider and 10 percent to another to compare them. Fail over to a second provider when the first
+            is down (a later unit). Drop a new provider in by writing one more adapter, with no change to any app
+            that calls the gateway.
+        </p>
+        <p class="text-mt-muted leading-relaxed">
+            The cost is real but bounded: you maintain one adapter per provider, and you keep them honest as
+            providers change their APIs. That is far less work than the alternative, which is every app carrying
+            the knowledge of every provider's dialect.
+        </p>
+    </section>
+
+    <!-- Key takeaways -->
+    <section class="mb-14">
+        <h2 class="text-xl font-bold mb-4">Key takeaways</h2>
+        <div class="space-y-3">
+            <div class="flex items-start gap-3"><div class="w-6 h-6 rounded-full bg-mt-accentLight flex items-center justify-center flex-shrink-0 mt-0.5"><span class="text-mt-accent font-bold text-xs">1</span></div><p class="text-sm">Providers accept the same idea in different dialects: different endpoints and different field names for model, system prompt, and max tokens.</p></div>
+            <div class="flex items-start gap-3"><div class="w-6 h-6 rounded-full bg-mt-accentLight flex items-center justify-center flex-shrink-0 mt-0.5"><span class="text-mt-accent font-bold text-xs">2</span></div><p class="text-sm">The gateway exposes one schema and uses an adapter per provider to translate that one shape into each provider's request.</p></div>
+            <div class="flex items-start gap-3"><div class="w-6 h-6 rounded-full bg-mt-accentLight flex items-center justify-center flex-shrink-0 mt-0.5"><span class="text-mt-accent font-bold text-xs">3</span></div><p class="text-sm">With adapters in place the provider is a setting you can switch, not a rewrite, which is what makes routing and fallback possible later.</p></div>
+        </div>
+    </section>
+
+    <LessonNav
+        prevHref="/proxy/what-a-proxy-does" prevLabel="Prev: What a proxy does"
+        nextHref="/proxy/streaming-the-answer" nextLabel="Next: Streaming the answer"
+    />
+
+</LessonLayout>

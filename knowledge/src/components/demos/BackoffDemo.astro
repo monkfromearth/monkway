@@ -1,0 +1,127 @@
+---
+/**
+ * BackoffDemo — drag a handle to set the number of attempts (1..6).
+ * Bars show the wait before each attempt: 1, 2, 4, 8... (doubling).
+ * Toggle "jitter" to randomize each wait within a band (a lighter band is
+ * drawn behind each bar; the bar sits somewhere inside it). Teaches
+ * exponential backoff and why jitter spreads a retrying crowd out.
+ */
+const W = 360, H = 220;
+const padL = 40, padR = 16, padTop = 16, padBot = 40;
+const plotW = W - padL - padR;
+const plotH = H - padTop - padBot;
+const maxAttempts = 6;
+const startAttempts = 4;
+// waits double: 1, 2, 4, 8, 16, 32 ; cap the chart height at the 6th
+const maxWait = 32;
+const baseY = H - padBot;
+// drag track for the attempts handle, along the bottom
+const trackY = H - 16;
+const sx = (a: number) => padL + ((a - 1) / (maxAttempts - 1)) * plotW;
+---
+
+<div class="mt-demo mw-backoff-demo my-6 bg-white border border-mt-border rounded-2xl p-6"
+     data-w={W} data-h={H} data-padl={padL} data-padr={padR} data-padtop={padTop} data-padbot={padBot}
+     data-max={maxAttempts} data-maxwait={maxWait} data-tracky={trackY}>
+    <p class="text-xs uppercase tracking-wide text-mt-muted font-semibold mb-3 text-center">Drag to set attempts &middot; toggle jitter</p>
+
+    <svg viewBox={`0 0 ${W} ${H}`} class="w-full max-w-md mx-auto block" role="img" aria-label="exponential backoff wait times as bars">
+        <!-- baseline -->
+        <line x1={padL} y1={baseY} x2={W - padR} y2={baseY} stroke="#EFE8E2" stroke-width="2" />
+
+        <!-- bars + jitter bands + labels are drawn by the script into this group -->
+        <g data-bars></g>
+
+        <!-- drag track + handle for attempt count -->
+        <line x1={sx(1)} y1={trackY} x2={sx(maxAttempts)} y2={trackY} stroke="#EFE8E2" stroke-width="4" stroke-linecap="round" />
+        <circle data-handle cx={sx(startAttempts)} cy={trackY} r="9" fill="#fff" stroke="#C96F5A" stroke-width="3" class="mt-grab" />
+
+        <text x={padL} y={trackY + 4} font-size="9" fill="#7A7068" font-family="monospace" text-anchor="middle" opacity="0" />
+    </svg>
+
+    <div class="flex items-center justify-center gap-4 mt-3">
+        <span class="text-sm font-mono text-mt-muted">attempts: <span data-attempts class="text-mt-accent font-semibold">4</span></span>
+        <button data-jitter class="text-sm font-semibold rounded-lg px-3 py-1.5 border-2 border-mt-border bg-mt-bg hover:border-mt-accent transition-colors">jitter: off</button>
+    </div>
+</div>
+
+<script>
+    import { gsap, draggable, clamp, REDUCED } from '../../lib/interact';
+
+    document.querySelectorAll<HTMLElement>('.mw-backoff-demo').forEach((root) => {
+        const W = Number(root.dataset.w), H = Number(root.dataset.h);
+        const padL = Number(root.dataset.padl), padR = Number(root.dataset.padr);
+        const padTop = Number(root.dataset.padtop), padBot = Number(root.dataset.padbot);
+        const maxAttempts = Number(root.dataset.max), maxWait = Number(root.dataset.maxwait);
+        const trackY = Number(root.dataset.tracky);
+
+        const svg = root.querySelector<SVGSVGElement>('svg')!;
+        const handle = root.querySelector<SVGCircleElement>('[data-handle]')!;
+        const barsG = root.querySelector<SVGGElement>('[data-bars]')!;
+        const attemptsEl = root.querySelector<HTMLElement>('[data-attempts]')!;
+        const jitterBtn = root.querySelector<HTMLButtonElement>('[data-jitter]')!;
+
+        const plotW = W - padL - padR;
+        const plotH = H - padTop - padBot;
+        const baseY = H - padBot;
+        const sx = (a: number) => padL + ((a - 1) / (maxAttempts - 1)) * plotW;
+        const invA = (px: number) => clamp(Math.round((px - padL) / plotW * (maxAttempts - 1)) + 1, 1, maxAttempts);
+        // height of a bar for a given wait (in seconds), log-ish so 32 fits but 1 is visible
+        const barH = (wait: number) => (Math.log2(wait + 1) / Math.log2(maxWait + 1)) * plotH;
+
+        let attempts = 4;
+        let jitter = false;
+
+        function waitFor(i: number) { return Math.pow(2, i); } // attempt index 0,1,2.. -> 1,2,4,8
+
+        function render() {
+            attemptsEl.textContent = String(attempts);
+            jitterBtn.textContent = jitter ? 'jitter: on' : 'jitter: off';
+
+            const slot = plotW / maxAttempts;
+            const barW = Math.min(34, slot * 0.55);
+
+            let svgStr = '';
+            for (let i = 0; i < attempts; i++) {
+                const cx = padL + slot * (i + 0.5);
+                const w = waitFor(i);
+                const fullH = barH(w);
+
+                if (jitter) {
+                    // band spans half the full wait up to the full wait
+                    const lo = w / 2, hi = w;
+                    const loH = barH(lo), hiH = barH(hi);
+                    // a chosen value within the band
+                    const chosen = lo + Math.random() * (hi - lo);
+                    const chosenH = barH(chosen);
+                    // lighter band behind
+                    svgStr += `<rect x="${cx - barW / 2}" y="${baseY - hiH}" width="${barW}" height="${hiH - loH}" rx="3" fill="#EFE8E2" />`;
+                    // the bar sits inside the band
+                    svgStr += `<rect data-bar="${i}" x="${cx - barW / 2}" y="${baseY - chosenH}" width="${barW}" height="${chosenH}" rx="3" fill="#7B6CB5" />`;
+                    svgStr += `<text x="${cx}" y="${baseY + 14}" text-anchor="middle" font-size="9" fill="#7A7068" font-family="monospace">${chosen.toFixed(1)}s</text>`;
+                } else {
+                    svgStr += `<rect data-bar="${i}" x="${cx - barW / 2}" y="${baseY - fullH}" width="${barW}" height="${fullH}" rx="3" fill="#C96F5A" />`;
+                    svgStr += `<text x="${cx}" y="${baseY + 14}" text-anchor="middle" font-size="9" fill="#7A7068" font-family="monospace">${w}s</text>`;
+                }
+            }
+            barsG.innerHTML = svgStr;
+
+            const hx = sx(attempts);
+            const to = { attr: { cx: hx } };
+            REDUCED ? gsap.set(handle, to) : gsap.to(handle, { ...to, duration: 0.12, overwrite: true });
+
+            if (!REDUCED) {
+                barsG.querySelectorAll<SVGRectElement>('[data-bar]').forEach((bar) => {
+                    const fullHt = Number(bar.getAttribute('height'));
+                    const y0 = Number(bar.getAttribute('y'));
+                    gsap.fromTo(bar, { attr: { height: 0, y: y0 + fullHt } }, { attr: { height: fullHt, y: y0 }, duration: 0.3, ease: 'power2.out' });
+                });
+            }
+        }
+
+        draggable(svg, handle, (x) => { attempts = invA(x); render(); });
+        jitterBtn.addEventListener('click', () => { jitter = !jitter; render(); });
+
+        render();
+    });
+</script>

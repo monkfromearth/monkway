@@ -1,0 +1,110 @@
+---
+/**
+ * StreamingDemo — buffered vs streaming, made visible.
+ * Buffered: press Send, a pause, then the whole sentence appears at once.
+ * Streaming: press Send, the sentence types in token by token (first token arrives fast).
+ * REDUCED: show the full sentence immediately in both; the difference is stated in text.
+ */
+const SENTENCE = "A proxy forwards the request and relays the answer back.";
+---
+
+<div class="mt-demo mw-streaming-demo my-6 bg-white border border-mt-border rounded-2xl p-6" data-sentence={SENTENCE}>
+    <p class="text-xs uppercase tracking-wide text-mt-muted font-semibold mb-3 text-center">Compare how the answer arrives</p>
+
+    <!-- mode toggle + send -->
+    <div class="flex flex-wrap gap-2 justify-center mb-4">
+        <button data-mode="buffered" class="mw-mode px-3 py-1.5 rounded-lg text-sm font-semibold border border-mt-border transition-colors mw-mode-active">Buffered</button>
+        <button data-mode="streaming" class="mw-mode px-3 py-1.5 rounded-lg text-sm font-semibold border border-mt-border transition-colors">Streaming</button>
+        <button data-send class="px-4 py-1.5 rounded-lg text-sm font-semibold bg-mt-accent text-white transition-opacity">Send</button>
+    </div>
+
+    <!-- output area -->
+    <div class="bg-mt-bg border border-mt-border rounded-xl p-4 min-h-[5rem]">
+        <p class="text-xs font-semibold text-mt-muted mb-2">Answer</p>
+        <p data-out class="text-sm leading-relaxed min-h-[2.5rem]"><span class="text-mt-muted italic">Press Send.</span></p>
+        <p data-timer class="text-xs font-mono text-mt-muted mt-2"></p>
+    </div>
+</div>
+
+<script>
+    import { gsap, REDUCED } from '../../lib/interact';
+
+    document.querySelectorAll<HTMLElement>('.mw-streaming-demo').forEach((root) => {
+        const sentence = root.dataset.sentence || '';
+        const tokens = sentence.split(/(\s+)/); // keep spaces as their own chunks
+        const out = root.querySelector<HTMLElement>('[data-out]')!;
+        const timer = root.querySelector<HTMLElement>('[data-timer]')!;
+        const sendBtn = root.querySelector<HTMLButtonElement>('[data-send]')!;
+        const modeBtns = root.querySelectorAll<HTMLButtonElement>('[data-mode]');
+        let mode: 'buffered' | 'streaming' = 'buffered';
+        let running = false;
+
+        modeBtns.forEach((b) =>
+            b.addEventListener('click', () => {
+                mode = b.dataset.mode as 'buffered' | 'streaming';
+                modeBtns.forEach((x) => x.classList.toggle('mw-mode-active', x === b));
+            }),
+        );
+
+        function reset() {
+            out.textContent = '';
+            timer.textContent = '';
+        }
+
+        function send() {
+            if (running) return;
+            running = true;
+            sendBtn.style.opacity = '0.5';
+            reset();
+
+            if (REDUCED) {
+                // Show final state immediately in both modes; explain the difference in words.
+                out.textContent = sentence;
+                timer.textContent =
+                    mode === 'buffered'
+                        ? 'Buffered: nothing shows until ~3.0s, then all of it at once.'
+                        : 'Streaming: first word at ~0.2s, the rest flow in.';
+                running = false;
+                sendBtn.style.opacity = '1';
+                return;
+            }
+
+            if (mode === 'buffered') {
+                // one wait, then the whole thing
+                timer.textContent = 'waiting for the full answer...';
+                gsap.delayedCall(2.4, () => {
+                    out.textContent = sentence;
+                    timer.textContent = 'arrived at ~3.0s (all at once)';
+                    running = false;
+                    sendBtn.style.opacity = '1';
+                });
+            } else {
+                // type in token by token
+                let i = 0;
+                timer.textContent = 'first word at ~0.2s...';
+                const tick = () => {
+                    if (i < tokens.length) {
+                        out.textContent += tokens[i];
+                        i++;
+                        gsap.delayedCall(0.12, tick);
+                    } else {
+                        timer.textContent = 'done (you read along as it arrived)';
+                        running = false;
+                        sendBtn.style.opacity = '1';
+                    }
+                };
+                gsap.delayedCall(0.2, tick);
+            }
+        }
+
+        sendBtn.addEventListener('click', send);
+    });
+</script>
+
+<style>
+    .mw-mode-active {
+        background: #C96F5A;
+        color: #fff;
+        border-color: #C96F5A;
+    }
+</style>

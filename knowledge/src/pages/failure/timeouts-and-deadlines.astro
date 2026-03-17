@@ -1,0 +1,119 @@
+---
+import '../../styles/global.css';
+import LessonLayout from '../../layouts/LessonLayout.astro';
+import LessonHeader from '../../components/LessonHeader.astro';
+import LessonNav from '../../components/LessonNav.astro';
+import InsightBox from '../../components/InsightBox.astro';
+import TagBadge from '../../components/TagBadge.astro';
+import TimeoutDemo from '../../components/demos/TimeoutDemo.astro';
+---
+
+<LessonLayout title="Timeouts and deadlines" lessonNumber="2.4" section="When It Fails">
+
+    <LessonHeader lessonNumber="2.4" title="Timeouts and deadlines" description="A call that never returns is worse than one that fails. Set a limit on one attempt, and a budget across all of them.">
+        <TagBadge variant="concepts">concepts</TagBadge>
+        <TagBadge variant="default">8 min read</TagBadge>
+    </LessonHeader>
+
+    <!-- SECTION 1: hook -->
+    <section class="mb-14">
+        <h2 class="text-xl font-bold mb-4">A clear "no" beats waiting forever.</h2>
+        <p class="text-mt-muted leading-relaxed mb-4">
+            You ring a shop to ask if they have something in stock. If they say no, fine, you call the next shop. But
+            if the line just rings and rings and nobody picks up and nobody hangs up, you are stuck. You cannot try
+            the next shop because you are still holding this dead line. The worst outcome is not a "no." It is no
+            answer at all.
+        </p>
+        <p class="text-mt-muted leading-relaxed mb-4">
+            A call from the gateway to a provider can hang exactly like that. The provider stalls and never closes
+            the connection, so your request sits there waiting forever, holding resources, never failing and never
+            succeeding. Without a rule that says "I have waited long enough, give up on this one," a single hung
+            provider can freeze your whole request.
+        </p>
+        <p class="text-mt-muted leading-relaxed">
+            Two rules prevent that, and they work at different scopes. A <strong>timeout</strong> bounds one attempt.
+            A <strong>deadline</strong> bounds the whole operation across every retry. The gatekeeper monk does not
+            wait at a silent door indefinitely, and he does not let the total wait run past what the traveler can
+            bear.
+        </p>
+    </section>
+
+    <!-- SECTION 2: timeout vs deadline -->
+    <section class="mb-14">
+        <h2 class="text-xl font-bold mb-4">One bounds an attempt; the other bounds the budget.</h2>
+        <p class="text-mt-muted leading-relaxed mb-4">
+            A <strong>timeout</strong> is the longest you will wait for a single attempt before declaring it dead.
+            "Wait five seconds for an answer; if none comes, give up on this try." It is a stopwatch on one call.
+            Without it, a hung provider hangs you.
+        </p>
+        <p class="text-mt-muted leading-relaxed mb-4">
+            A <strong>deadline</strong> is the total time budget for the whole operation, including every retry and
+            every backoff wait in between. "The caller can wait twelve seconds, full stop." It is a stopwatch on the
+            entire effort, not on any one call.
+        </p>
+        <p class="text-mt-muted leading-relaxed mb-4">
+            They have to work together, because retries with backoff can quietly blow past what the caller will
+            tolerate. Say each attempt gets a five-second timeout and the whole operation gets a twelve-second
+            deadline. After one failed attempt (5s) plus a short backoff wait, you have only enough budget left for
+            roughly one more full attempt. So that pairing gives you about two attempts before the deadline cuts you
+            off, no matter how many retries your backoff rule would have allowed.
+        </p>
+        <div class="bg-white border border-mt-border rounded-xl p-5 mb-4 font-mono text-sm overflow-x-auto">
+            timeout = 5s per attempt<br />
+            deadline = 12s total<br />
+            <span class="text-mt-muted">// attempt 1 (up to 5s) + wait + attempt 2 (up to 5s) ... ~2 attempts fit</span>
+        </div>
+        <p class="text-mt-muted leading-relaxed">
+            The deadline is the boss. It does not care how the time was spent (a slow attempt, a backoff wait, a
+            retry); once the budget is gone, the operation fails and the caller gets a clean, prompt error instead of
+            an open-ended hang.
+        </p>
+    </section>
+
+    <!-- SECTION 3: the tradeoff -->
+    <section class="mb-14">
+        <h2 class="text-xl font-bold mb-4">Setting the timeout is a tradeoff.</h2>
+        <p class="text-mt-muted leading-relaxed mb-4">
+            Pick the timeout too short and you cut off slow-but-valid responses. Some real answers genuinely take a
+            while, especially long generations, and a trigger-happy timeout throws away work that was about to
+            succeed. Pick it too long and you waste that whole stretch sitting on calls that were never coming back,
+            which is exactly the hang you were trying to avoid.
+        </p>
+        <p class="text-mt-muted leading-relaxed mb-4">
+            The way out is to set the timeout from the latency you actually see, not a guess. If your p99 latency is
+            four seconds (meaning ninety-nine percent of real responses arrive within four seconds), a two-second
+            timeout would cut off that slow but legitimate tail. A timeout a bit above the p99 keeps the genuine slow
+            responses and still kills the truly stuck ones.
+        </p>
+
+        <TimeoutDemo />
+
+        <p class="text-mt-muted leading-relaxed">
+            Drag the timeout line left and right. Pull it in tight and you "serve" fast but cut off the slow tail of
+            real responses. Push it out and you keep more of them but wait longer on the dead ones. There is no free
+            setting; there is only the tradeoff you choose on purpose.
+        </p>
+
+        <InsightBox>
+            <p class="text-sm">A <strong>timeout</strong> bounds one attempt; a <strong>deadline</strong> bounds the
+            whole retry budget across all attempts. Pick both from the latency you actually measure (around the p99),
+            not from a round number that feels safe.</p>
+        </InsightBox>
+    </section>
+
+    <!-- Key takeaways -->
+    <section class="mb-14">
+        <h2 class="text-xl font-bold mb-4">Key takeaways</h2>
+        <div class="space-y-3">
+            <div class="flex items-start gap-3"><div class="w-6 h-6 rounded-full bg-mt-accentLight flex items-center justify-center flex-shrink-0 mt-0.5"><span class="text-mt-accent font-bold text-xs">1</span></div><p class="text-sm">A hung call that never returns is worse than a clean failure. A timeout caps how long you wait for one attempt before giving up on it.</p></div>
+            <div class="flex items-start gap-3"><div class="w-6 h-6 rounded-full bg-mt-accentLight flex items-center justify-center flex-shrink-0 mt-0.5"><span class="text-mt-accent font-bold text-xs">2</span></div><p class="text-sm">A deadline caps the total time for the whole operation across all retries and backoff waits, so retries cannot blow past what the caller can wait.</p></div>
+            <div class="flex items-start gap-3"><div class="w-6 h-6 rounded-full bg-mt-accentLight flex items-center justify-center flex-shrink-0 mt-0.5"><span class="text-mt-accent font-bold text-xs">3</span></div><p class="text-sm">Too short cuts off slow-but-valid answers; too long wastes time on dead calls. Set both from the latency you actually see, around the p99.</p></div>
+        </div>
+    </section>
+
+    <LessonNav
+        prevHref="/failure/backoff-and-jitter" prevLabel="Backoff and jitter"
+        nextHref="/routing/routing-policy" nextLabel="Many providers, one choice"
+    />
+
+</LessonLayout>

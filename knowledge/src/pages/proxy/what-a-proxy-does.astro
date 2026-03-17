@@ -1,0 +1,154 @@
+---
+import '../../styles/global.css';
+import LessonLayout from '../../layouts/LessonLayout.astro';
+import LessonHeader from '../../components/LessonHeader.astro';
+import LessonNav from '../../components/LessonNav.astro';
+import InsightBox from '../../components/InsightBox.astro';
+import TagBadge from '../../components/TagBadge.astro';
+import StepNumber from '../../components/StepNumber.astro';
+---
+
+<LessonLayout title="What a proxy does" lessonNumber="1.1" section="The Proxy">
+
+    <LessonHeader lessonNumber="1.1" title="What a proxy does" description="The simplest gateway: take a request, forward it, return the answer. What 'forwarding' really involves.">
+        <TagBadge variant="concepts">concepts</TagBadge>
+        <TagBadge variant="default">8 min read</TagBadge>
+    </LessonHeader>
+
+    <!-- SECTION 1: hook + concept -->
+    <section class="mb-14">
+        <h2 class="text-xl font-bold mb-4">A doorman who runs the errand for you.</h2>
+        <p class="text-mt-muted leading-relaxed mb-4">
+            Picture a hotel. You hand a note to the doorman at the front desk and ask him to deliver it to a shop
+            down the street. He carries it over, waits for the reply, and brings the reply back to you. You never
+            walk to the shop. You only ever talk to the doorman.
+        </p>
+        <p class="text-mt-muted leading-relaxed mb-4">
+            That is a <strong>proxy</strong>: something that stands between you (the client) and the place you
+            actually want to reach (the server), passing your request along and handing the answer back. The
+            gatekeeper monk at our gate is exactly this doorman. Every traveler talks to him, not to the rooms
+            behind the gate.
+        </p>
+        <p class="text-mt-muted leading-relaxed mb-4">
+            More precisely, the gateway is a <strong>reverse proxy</strong>. The everyday kind of proxy sits in
+            front of <em>you</em> and reaches out to the wider world on your behalf. A reverse proxy sits in front
+            of the <em>servers</em> and answers on their behalf. The provider (OpenAI, Anthropic, Google) is the
+            shop. The gateway is the desk you call instead.
+        </p>
+
+        <InsightBox>
+            <p class="text-sm">A <strong>proxy</strong> stands between client and server and relays the request both ways. Our gateway is a <strong>reverse proxy</strong>: it sits in front of the providers and speaks for them.</p>
+        </InsightBox>
+    </section>
+
+    <!-- SECTION 2: what forwarding really involves -->
+    <section class="mb-14">
+        <h2 class="text-xl font-bold mb-4">"Just forward it" hides three jobs.</h2>
+        <p class="text-mt-muted leading-relaxed mb-4">
+            Forwarding sounds like a single move: receive a request, send it onward, relay the response back. It
+            is. But even the plainest proxy has to get three small things exactly right, or the call breaks.
+        </p>
+
+        <div class="space-y-4 mb-4">
+            <div class="flex items-start gap-4">
+                <StepNumber number="1" color="accent" />
+                <div>
+                    <p class="font-semibold text-sm mb-1">Carry the request body faithfully.</p>
+                    <p class="text-mt-muted text-sm leading-relaxed">The model, the messages, the settings the client sent are what the provider needs to answer. The proxy passes that payload through unchanged.</p>
+                </div>
+            </div>
+            <div class="flex items-start gap-4">
+                <StepNumber number="2" color="lav" />
+                <div>
+                    <p class="font-semibold text-sm mb-1">Attach the provider's key, not the client's.</p>
+                    <p class="text-mt-muted text-sm leading-relaxed">The client authenticates to the gateway. The gateway authenticates to the provider with its own secret key. The client never sees or holds the provider key. Swapping in the right key is the proxy's job.</p>
+                </div>
+            </div>
+            <div class="flex items-start gap-4">
+                <StepNumber number="3" color="blue" />
+                <div>
+                    <p class="font-semibold text-sm mb-1">Return the response unchanged.</p>
+                    <p class="text-mt-muted text-sm leading-relaxed">Whatever the provider replies, the body and the status code, comes back to the client as-is. The client should not be able to tell a proxy was in the path at all.</p>
+                </div>
+            </div>
+        </div>
+
+        <p class="text-mt-muted leading-relaxed">
+            That third point is the whole contract of a plain proxy: be invisible. If the answer that reaches the
+            client differs from what the provider sent, the proxy has changed the meaning of the call, and that is
+            a bug until you choose to do it on purpose later.
+        </p>
+    </section>
+
+    <!-- SECTION 3: worked example -->
+    <section class="mb-14">
+        <h2 class="text-xl font-bold mb-4">One call, walked through.</h2>
+        <p class="text-mt-muted leading-relaxed mb-4">
+            Say the client sends a chat request to the gateway. It calls the gateway's own address, with the
+            request body it would have sent the provider:
+        </p>
+
+        <div class="bg-white border border-mt-border rounded-xl p-5 mb-4 font-mono text-sm leading-relaxed">
+            POST https://gateway.example/v1/chat/completions<br/>
+            Authorization: Bearer <span class="text-mt-muted">&lt;client's gateway key&gt;</span><br/>
+            <br/>
+            &#123; "model": "gpt-4o", "messages": [ ... ] &#125;
+        </div>
+
+        <p class="text-mt-muted leading-relaxed mb-4">
+            The gateway takes that same body and sends it to the provider's real address, but swaps the key for
+            its own provider secret:
+        </p>
+
+        <div class="bg-white border border-mt-border rounded-xl p-5 mb-4 font-mono text-sm leading-relaxed">
+            POST https://api.openai.com/v1/chat/completions<br/>
+            Authorization: Bearer <span class="text-mt-accent">&lt;gateway's OpenAI key&gt;</span><br/>
+            <br/>
+            &#123; "model": "gpt-4o", "messages": [ ... ] &#125;
+        </div>
+
+        <p class="text-mt-muted leading-relaxed">
+            The provider answers. The gateway hands that answer straight back to the client. Same body in, same
+            body out, only the destination and the key changed in the middle.
+        </p>
+
+        <InsightBox>
+            <p class="text-sm">The client talks to one address and holds one key. The gateway maps that to the provider's address and the provider's key. The client never touches a provider secret.</p>
+        </InsightBox>
+    </section>
+
+    <!-- SECTION 4: why even a plain proxy is worth it -->
+    <section class="mb-14">
+        <h2 class="text-xl font-bold mb-4">Why bother, if it just forwards?</h2>
+        <p class="text-mt-muted leading-relaxed mb-4">
+            A proxy that only relays calls looks like it adds nothing. Its value is not in what it changes; it is
+            in where it sits. Every request now flows through <strong>one place you control</strong>.
+        </p>
+        <p class="text-mt-muted leading-relaxed mb-4">
+            One address for your whole app to call. One place to write a log line for every request. One place to
+            keep the provider key, instead of pasting it into every service. And one place to add everything that
+            comes later in this course: retries, routing, caching, budgets. None of those would have a home if
+            calls went straight from your app to the provider.
+        </p>
+        <p class="text-mt-muted leading-relaxed">
+            So the plain proxy is not the feature. It is the foundation the features bolt onto. Build the door
+            first; decide what the doorman does next later.
+        </p>
+    </section>
+
+    <!-- Key takeaways -->
+    <section class="mb-14">
+        <h2 class="text-xl font-bold mb-4">Key takeaways</h2>
+        <div class="space-y-3">
+            <div class="flex items-start gap-3"><div class="w-6 h-6 rounded-full bg-mt-accentLight flex items-center justify-center flex-shrink-0 mt-0.5"><span class="text-mt-accent font-bold text-xs">1</span></div><p class="text-sm">A proxy stands between client and server and forwards both ways; our gateway is a reverse proxy, speaking for the providers behind it.</p></div>
+            <div class="flex items-start gap-3"><div class="w-6 h-6 rounded-full bg-mt-accentLight flex items-center justify-center flex-shrink-0 mt-0.5"><span class="text-mt-accent font-bold text-xs">2</span></div><p class="text-sm">Even the plainest proxy must carry the body faithfully, swap in the provider's key (never the client's), and return the response unchanged.</p></div>
+            <div class="flex items-start gap-3"><div class="w-6 h-6 rounded-full bg-mt-accentLight flex items-center justify-center flex-shrink-0 mt-0.5"><span class="text-mt-accent font-bold text-xs">3</span></div><p class="text-sm">The value of even a do-nothing proxy is the single point of control: one endpoint, one log, one place to add every feature that follows.</p></div>
+        </div>
+    </section>
+
+    <LessonNav
+        prevHref="/gate/why-a-gateway" prevLabel="Prev: Why a gateway at all"
+        nextHref="/proxy/one-api-many-providers" nextLabel="Next: One API, many providers"
+    />
+
+</LessonLayout>

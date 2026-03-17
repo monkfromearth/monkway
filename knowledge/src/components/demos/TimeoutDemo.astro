@@ -1,0 +1,98 @@
+---
+/**
+ * TimeoutDemo — a horizontal latency axis (0..8s) with request dots scattered
+ * by latency. Drag a vertical "timeout" line; dots to its RIGHT are cut (red).
+ * A counter shows percent served vs cut. Teaches the timeout tradeoff: too
+ * short cuts off slow-but-valid responses, too long wastes time on dead calls.
+ */
+const W = 360, H = 200;
+const padL = 24, padR = 24, padTop = 24, padBot = 36;
+const maxLat = 8;
+const plotW = W - padL - padR;
+const axisY = H - padBot;
+// twelve requests, latencies clustered low with a slow tail (in seconds)
+const lats = [0.3, 0.5, 0.7, 0.9, 1.1, 1.3, 1.6, 2.0, 2.6, 3.4, 4.8, 6.5];
+// stagger the dots vertically so they don't overlap
+const rowYs = [axisY - 24, axisY - 48, axisY - 72, axisY - 96];
+const startTimeout = 3.0;
+const tx = (t: number) => padL + (t / maxLat) * plotW;
+---
+
+<div class="mt-demo mw-timeout-demo my-6 bg-white border border-mt-border rounded-2xl p-6"
+     data-w={W} data-padl={padL} data-padr={padR} data-maxlat={maxLat}
+     data-lats={lats.join(',')} data-rows={rowYs.join(',')} data-axisy={axisY} data-padtop={padTop}>
+    <p class="text-xs uppercase tracking-wide text-mt-muted font-semibold mb-3 text-center">Drag the timeout line</p>
+
+    <svg viewBox={`0 0 ${W} ${H}`} class="w-full max-w-md mx-auto block" role="img" aria-label="drag a timeout line; requests slower than it get cut">
+        <!-- axis -->
+        <line x1={padL} y1={axisY} x2={W - padR} y2={axisY} stroke="#EFE8E2" stroke-width="2" />
+        {[0, 2, 4, 6, 8].map((t) => (
+            <text x={tx(t)} y={axisY + 18} text-anchor="middle" font-size="9" fill="#7A7068" font-family="monospace">{t}s</text>
+        ))}
+
+        <!-- request dots, painted by the script -->
+        {lats.map((lt, i) => (
+            <circle data-dot={i} data-lat={lt} cx={tx(lt)} cy={rowYs[i % rowYs.length]} r="6" fill="#5C9367" />
+        ))}
+
+        <!-- the draggable timeout line -->
+        <line data-line x1={tx(startTimeout)} y1={padTop - 8} x2={tx(startTimeout)} y2={axisY} stroke="#C96F5A" stroke-width="2" stroke-dasharray="4 3" />
+        <circle data-handle cx={tx(startTimeout)} cy={padTop - 8} r="8" fill="#fff" stroke="#C96F5A" stroke-width="3" class="mt-grab" />
+    </svg>
+
+    <div class="flex items-center justify-center gap-5 mt-3 text-sm font-mono">
+        <span>timeout: <span data-tval class="text-mt-accent font-semibold">3.0s</span></span>
+        <span class="text-mt-green"><span data-served>83</span>% served</span>
+        <span class="text-mt-rose"><span data-cut>17</span>% cut</span>
+    </div>
+</div>
+
+<script>
+    import { gsap, draggable, clamp, REDUCED } from '../../lib/interact';
+
+    document.querySelectorAll<HTMLElement>('.mw-timeout-demo').forEach((root) => {
+        const W = Number(root.dataset.w), padL = Number(root.dataset.padl), padR = Number(root.dataset.padr);
+        const maxLat = Number(root.dataset.maxlat);
+        const lats = (root.dataset.lats || '').split(',').map(Number);
+        const axisY = Number(root.dataset.axisy), padTop = Number(root.dataset.padtop);
+
+        const svg = root.querySelector<SVGSVGElement>('svg')!;
+        const line = root.querySelector<SVGLineElement>('[data-line]')!;
+        const handle = root.querySelector<SVGCircleElement>('[data-handle]')!;
+        const tvalEl = root.querySelector<HTMLElement>('[data-tval]')!;
+        const servedEl = root.querySelector<HTMLElement>('[data-served]')!;
+        const cutEl = root.querySelector<HTMLElement>('[data-cut]')!;
+
+        const plotW = W - padL - padR;
+        const tx = (t: number) => padL + (t / maxLat) * plotW;
+        const invT = (px: number) => clamp((px - padL) / plotW * maxLat, 0, maxLat);
+
+        let timeout = 3.0;
+
+        function render() {
+            tvalEl.textContent = timeout.toFixed(1) + 's';
+            const x = tx(timeout);
+            const lineTo = { attr: { x1: x, x2: x } };
+            const handleTo = { attr: { cx: x } };
+            REDUCED ? gsap.set(line, lineTo) : gsap.to(line, { ...lineTo, duration: 0.1, overwrite: true });
+            REDUCED ? gsap.set(handle, handleTo) : gsap.to(handle, { ...handleTo, duration: 0.1, overwrite: true });
+
+            let served = 0;
+            lats.forEach((lt, i) => {
+                const dot = root.querySelector<SVGCircleElement>(`[data-dot="${i}"]`)!;
+                const ok = lt <= timeout;
+                if (ok) served++;
+                dot.setAttribute('fill', ok ? '#5C9367' : '#C96F5A');
+                dot.setAttribute('opacity', ok ? '1' : '0.55');
+            });
+            const pct = Math.round((served / lats.length) * 100);
+            servedEl.textContent = String(pct);
+            cutEl.textContent = String(100 - pct);
+        }
+
+        // snap dragged value to 0.5s steps; keep the line position continuous via render's tx()
+        draggable(svg, handle, (x) => { timeout = Math.round(invT(x) * 2) / 2; render(); });
+
+        render();
+    });
+</script>

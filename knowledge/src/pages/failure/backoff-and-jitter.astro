@@ -1,0 +1,137 @@
+---
+import '../../styles/global.css';
+import LessonLayout from '../../layouts/LessonLayout.astro';
+import LessonHeader from '../../components/LessonHeader.astro';
+import LessonNav from '../../components/LessonNav.astro';
+import InsightBox from '../../components/InsightBox.astro';
+import TagBadge from '../../components/TagBadge.astro';
+import BackoffDemo from '../../components/demos/BackoffDemo.astro';
+---
+
+<LessonLayout title="Backoff and jitter" lessonNumber="2.3" section="When It Fails">
+
+    <LessonHeader lessonNumber="2.3" title="Backoff and jitter" description="When you retry, wait longer each time and add a little randomness. Retry too eagerly and you make the outage worse.">
+        <TagBadge variant="concepts">concepts</TagBadge>
+        <TagBadge variant="default">9 min read</TagBadge>
+    </LessonHeader>
+
+    <!-- SECTION 1: hook -->
+    <section class="mb-14">
+        <h2 class="text-xl font-bold mb-4">Hammering a busy door does not open it.</h2>
+        <p class="text-mt-muted leading-relaxed mb-4">
+            A provider just told you it is overwhelmed (a <span class="font-mono text-sm">429</span>). The naive
+            move is to fire the request straight back, then again, then again, as fast as your loop runs. You are now
+            pounding on a door that is already jammed with people. Every retry adds to the pile that caused the
+            <span class="font-mono text-sm">429</span> in the first place, so you get more
+            <span class="font-mono text-sm">429</span>s, not fewer. The cure made the disease worse.
+        </p>
+        <p class="text-mt-muted leading-relaxed mb-4">
+            The fix is patience that grows. Wait a moment before the first retry. If that fails too, wait longer.
+            Keep doubling the pause. You give the struggling provider room to recover instead of crowding it, and you
+            stop after a few tries instead of looping forever.
+        </p>
+        <p class="text-mt-muted leading-relaxed">
+            This pattern has a name: <strong>exponential backoff</strong>, with a sprinkle of randomness called
+            <strong>jitter</strong> on top. The gatekeeper monk, turned away at a busy door, steps back and waits a
+            little longer each time rather than rattling the handle.
+        </p>
+    </section>
+
+    <!-- SECTION 2: exponential backoff -->
+    <section class="mb-14">
+        <h2 class="text-xl font-bold mb-4">Backoff: double the wait each time.</h2>
+        <p class="text-mt-muted leading-relaxed mb-4">
+            The rule is simple. Pick a base wait, say one second. After the first failure wait one second. After the
+            next, two. Then four, then eight. Each pause is double the last. This is "exponential" because the wait
+            grows by multiplying, not by adding a fixed amount.
+        </p>
+        <p class="text-mt-muted leading-relaxed mb-4">
+            Two guardrails keep it sane. A <strong>cap</strong> stops the wait from growing forever (you do not want
+            a retry scheduled for two minutes from now), and a <strong>limit on attempts</strong> means you give up
+            after, say, five or six tries and report a clean failure instead of retrying into the void. Backoff is
+            not "retry until it works." It is "retry a few times, politely, then stop."
+        </p>
+
+        <BackoffDemo />
+
+        <p class="text-mt-muted leading-relaxed">
+            Drag to add attempts and watch each bar double the one before it. The early retries come fast; the later
+            ones space out, giving the provider real breathing room before the final try.
+        </p>
+    </section>
+
+    <!-- SECTION 3: worked schedule -->
+    <section class="mb-14">
+        <h2 class="text-xl font-bold mb-4">A schedule by hand.</h2>
+        <p class="text-mt-muted leading-relaxed mb-4">
+            With a one-second base and doubling, here is what the waits look like across attempts. Read it as: the
+            attempt failed, so wait this long before the next one.
+        </p>
+        <div class="bg-white border border-mt-border rounded-xl overflow-hidden mb-4">
+            <table class="w-full text-sm">
+                <thead>
+                    <tr class="bg-mt-bg text-left">
+                        <th class="px-4 py-3 font-semibold">After attempt</th>
+                        <th class="px-4 py-3 font-semibold">Wait before next</th>
+                        <th class="px-4 py-3 font-semibold">Total elapsed</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-mt-border">
+                    <tr><td class="px-4 py-3 font-mono">1 fails</td><td class="px-4 py-3 font-mono">~1s</td><td class="px-4 py-3 font-mono text-mt-muted">1s</td></tr>
+                    <tr><td class="px-4 py-3 font-mono">2 fails</td><td class="px-4 py-3 font-mono">~2s</td><td class="px-4 py-3 font-mono text-mt-muted">3s</td></tr>
+                    <tr><td class="px-4 py-3 font-mono">3 fails</td><td class="px-4 py-3 font-mono">~4s</td><td class="px-4 py-3 font-mono text-mt-muted">7s</td></tr>
+                    <tr><td class="px-4 py-3 font-mono">4 fails</td><td class="px-4 py-3 font-mono">~8s</td><td class="px-4 py-3 font-mono text-mt-muted">15s</td></tr>
+                    <tr><td class="px-4 py-3 font-mono">5 fails</td><td class="px-4 py-3 text-mt-rose font-semibold">give up</td><td class="px-4 py-3 font-mono text-mt-muted">report failure</td></tr>
+                </tbody>
+            </table>
+        </div>
+        <p class="text-mt-muted leading-relaxed">
+            Four retries cost about fifteen seconds total, most of it in the last wait. That total matters: it is
+            the budget the caller is paying in patience, which is exactly what the next lesson on deadlines is about.
+        </p>
+    </section>
+
+    <!-- SECTION 4: jitter -->
+    <section class="mb-14">
+        <h2 class="text-xl font-bold mb-4">Jitter: do not all retry in lockstep.</h2>
+        <p class="text-mt-muted leading-relaxed mb-4">
+            Backoff alone has a hidden trap. Imagine a thousand clients all hit the same provider, all get a
+            <span class="font-mono text-sm">429</span> at nearly the same instant, and all run the same "wait one
+            second" rule. One second later, all thousand fire again at the exact same moment. You have rebuilt the
+            original spike. This synchronized stampede has a name: the <strong>thundering herd</strong>.
+        </p>
+        <p class="text-mt-muted leading-relaxed mb-4">
+            Jitter breaks the lockstep. Instead of waiting exactly one second, each client waits a random amount
+            inside a band, somewhere between half a second and one second, say. Now the thousand retries are smeared
+            across a window instead of landing on the same tick. The provider sees a gentle stream it can absorb
+            rather than a wall.
+        </p>
+        <p class="text-mt-muted leading-relaxed">
+            Toggle jitter on in the demo above. The crisp doubling bars turn into ranges, each retry landing
+            somewhere inside its band. That little bit of noise is what keeps a crowd of clients from retrying as one
+            fist.
+        </p>
+
+        <InsightBox>
+            <p class="text-sm">Double the wait each retry (<strong>exponential backoff</strong>), cap it, and stop
+            after a few attempts. Then <strong>jitter</strong> the waits so a crowd of clients does not retry in
+            lockstep and rebuild the very spike that caused the failure.</p>
+        </InsightBox>
+    </section>
+
+    <!-- Key takeaways -->
+    <section class="mb-14">
+        <h2 class="text-xl font-bold mb-4">Key takeaways</h2>
+        <div class="space-y-3">
+            <div class="flex items-start gap-3"><div class="w-6 h-6 rounded-full bg-mt-accentLight flex items-center justify-center flex-shrink-0 mt-0.5"><span class="text-mt-accent font-bold text-xs">1</span></div><p class="text-sm">Retrying immediately and repeatedly hammers an already-struggling provider and causes more failures. Wait, and grow the wait each time.</p></div>
+            <div class="flex items-start gap-3"><div class="w-6 h-6 rounded-full bg-mt-accentLight flex items-center justify-center flex-shrink-0 mt-0.5"><span class="text-mt-accent font-bold text-xs">2</span></div><p class="text-sm">Exponential backoff doubles the wait each retry (1s, 2s, 4s, 8s), with a cap and a limit on attempts so you stop instead of looping forever.</p></div>
+            <div class="flex items-start gap-3"><div class="w-6 h-6 rounded-full bg-mt-accentLight flex items-center justify-center flex-shrink-0 mt-0.5"><span class="text-mt-accent font-bold text-xs">3</span></div><p class="text-sm">Jitter adds randomness to each wait so many clients do not all retry at the same instant (the thundering herd). The total wait is a budget, which is the next lesson.</p></div>
+        </div>
+    </section>
+
+    <LessonNav
+        prevHref="/failure/idempotency" prevLabel="Idempotency: safe to retry?"
+        nextHref="/failure/timeouts-and-deadlines" nextLabel="Timeouts and deadlines"
+    />
+
+</LessonLayout>

@@ -1,0 +1,124 @@
+---
+/**
+ * ProxyTranslateDemo — the same canonical request, remapped to each provider's shape.
+ * Click a provider; the labeled rows below update to that provider's endpoint and field names.
+ * Display is labeled text rows (not real code). Motion is a quick fade/slide; instant if REDUCED.
+ */
+---
+
+<div class="mt-demo mw-translate-demo my-6 bg-white border border-mt-border rounded-2xl p-6">
+    <p class="text-xs uppercase tracking-wide text-mt-muted font-semibold mb-3 text-center">Pick a provider, watch the same request get remapped</p>
+
+    <!-- The canonical request the app always sends -->
+    <div class="bg-mt-bg border border-mt-border rounded-xl p-4 mb-5">
+        <p class="text-xs font-semibold text-mt-muted mb-2">What your app always sends (canonical)</p>
+        <div class="font-mono text-sm leading-relaxed">
+            model: <span class="text-mt-text">"gpt-4o"</span><br/>
+            system: <span class="text-mt-text">"You are concise."</span><br/>
+            messages: <span class="text-mt-text">[ user: "Hello" ]</span><br/>
+            max_tokens: <span class="text-mt-text">256</span>
+        </div>
+    </div>
+
+    <!-- Provider buttons -->
+    <div class="flex gap-2 justify-center mb-5">
+        <button data-pick="openai" class="mw-btn px-3 py-1.5 rounded-lg text-sm font-semibold border border-mt-border transition-colors">OpenAI</button>
+        <button data-pick="anthropic" class="mw-btn px-3 py-1.5 rounded-lg text-sm font-semibold border border-mt-border transition-colors">Anthropic</button>
+        <button data-pick="google" class="mw-btn px-3 py-1.5 rounded-lg text-sm font-semibold border border-mt-border transition-colors">Google</button>
+    </div>
+
+    <!-- Remapped panel -->
+    <div data-panel class="border border-mt-border rounded-xl p-4">
+        <p class="text-xs font-semibold text-mt-muted mb-2">Sent to <span data-prov-name class="text-mt-accent">OpenAI</span></p>
+        <div class="space-y-1.5 text-sm">
+            <div class="flex gap-2"><span class="text-mt-muted w-28 flex-shrink-0">endpoint</span><span data-endpoint class="font-mono text-mt-text"></span></div>
+            <div class="flex gap-2"><span class="text-mt-muted w-28 flex-shrink-0">model field</span><span data-f-model class="font-mono text-mt-text"></span></div>
+            <div class="flex gap-2"><span class="text-mt-muted w-28 flex-shrink-0">system prompt</span><span data-f-system class="font-mono text-mt-text"></span></div>
+            <div class="flex gap-2"><span class="text-mt-muted w-28 flex-shrink-0">max tokens</span><span data-f-max class="font-mono text-mt-text"></span></div>
+        </div>
+    </div>
+</div>
+
+<script>
+    import { gsap, REDUCED } from '../../lib/interact';
+
+    type Shape = {
+        name: string;
+        endpoint: string;
+        model: string;
+        system: string;
+        max: string;
+    };
+
+    const SHAPES: Record<string, Shape> = {
+        openai: {
+            name: 'OpenAI',
+            endpoint: 'POST /v1/chat/completions',
+            model: 'model: "gpt-4o"',
+            system: 'a message with role "system" in messages[]',
+            max: 'max_tokens: 256',
+        },
+        anthropic: {
+            name: 'Anthropic',
+            endpoint: 'POST /v1/messages',
+            model: 'model: "claude-3-5-sonnet"',
+            system: 'system: "You are concise."  (a top-level field)',
+            max: 'max_tokens: 256  (required, not optional)',
+        },
+        google: {
+            name: 'Google',
+            endpoint: 'POST /v1beta/models/gemini-1.5-pro:generateContent',
+            model: 'model is in the URL path, not the body',
+            system: 'systemInstruction: { parts: [...] }',
+            max: 'generationConfig.maxOutputTokens: 256',
+        },
+    };
+
+    document.querySelectorAll<HTMLElement>('.mw-translate-demo').forEach((root) => {
+        const panel = root.querySelector<HTMLElement>('[data-panel]')!;
+        const nameEl = root.querySelector<HTMLElement>('[data-prov-name]')!;
+        const endpointEl = root.querySelector<HTMLElement>('[data-endpoint]')!;
+        const modelEl = root.querySelector<HTMLElement>('[data-f-model]')!;
+        const systemEl = root.querySelector<HTMLElement>('[data-f-system]')!;
+        const maxEl = root.querySelector<HTMLElement>('[data-f-max]')!;
+        const buttons = root.querySelectorAll<HTMLButtonElement>('[data-pick]');
+
+        function fill(key: string) {
+            const s = SHAPES[key];
+            if (!s) return;
+            nameEl.textContent = s.name;
+            endpointEl.textContent = s.endpoint;
+            modelEl.textContent = s.model;
+            systemEl.textContent = s.system;
+            maxEl.textContent = s.max;
+            buttons.forEach((b) => {
+                const on = b.dataset.pick === key;
+                b.classList.toggle('mw-btn-active', on);
+            });
+        }
+
+        function select(key: string) {
+            if (REDUCED) { fill(key); return; }
+            gsap.to(panel, {
+                opacity: 0, x: 8, duration: 0.12, ease: 'power1.in',
+                onComplete: () => {
+                    fill(key);
+                    gsap.fromTo(panel, { opacity: 0, x: -8 }, { opacity: 1, x: 0, duration: 0.18, ease: 'power1.out' });
+                },
+            });
+        }
+
+        buttons.forEach((b) => b.addEventListener('click', () => select(b.dataset.pick!)));
+
+        // Static-sensible default: OpenAI filled in on load.
+        fill('openai');
+    });
+</script>
+
+<style>
+    .mw-btn-active {
+        background: #C96F5A;
+        color: #fff;
+        border-color: #C96F5A;
+    }
+</style>

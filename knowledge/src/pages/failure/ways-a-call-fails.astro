@@ -1,0 +1,149 @@
+---
+import '../../styles/global.css';
+import LessonLayout from '../../layouts/LessonLayout.astro';
+import LessonHeader from '../../components/LessonHeader.astro';
+import LessonNav from '../../components/LessonNav.astro';
+import InsightBox from '../../components/InsightBox.astro';
+import TagBadge from '../../components/TagBadge.astro';
+import RetryableDemo from '../../components/demos/RetryableDemo.astro';
+---
+
+<LessonLayout title="Ways a call fails" lessonNumber="2.1" section="When It Fails">
+
+    <LessonHeader lessonNumber="2.1" title="Ways a call fails" description="Not all failures are equal. Some are worth retrying, and some are your own bug. Telling them apart is the whole skill.">
+        <TagBadge variant="concepts">concepts</TagBadge>
+        <TagBadge variant="default">8 min read</TagBadge>
+    </LessonHeader>
+
+    <!-- SECTION 1: hook -->
+    <section class="mb-14">
+        <h2 class="text-xl font-bold mb-4">A busy signal is not a wrong number.</h2>
+        <p class="text-mt-muted leading-relaxed mb-4">
+            You call a shop. Sometimes the line is busy, so you hang up and try again in a minute and it goes
+            through. Sometimes you dialed a digit wrong, and no amount of redialing the same wrong number will ever
+            reach the shop. Both are "the call failed." Only one of them is worth trying again.
+        </p>
+        <p class="text-mt-muted leading-relaxed mb-4">
+            Calls from the gateway to a provider fail in exactly these two flavors. A busy signal, where the
+            provider is fine but momentarily can't take your call, and a wrong number, where your request itself is
+            broken and will be broken every single time you send it. The gatekeeper monk has to read which kind of
+            "no" he just got before he decides whether to knock again.
+        </p>
+        <p class="text-mt-muted leading-relaxed">
+            The provider tells you which kind it is, mostly through a status code: a small number attached to every
+            response. Learn to read it and the retry decision almost makes itself.
+        </p>
+    </section>
+
+    <!-- SECTION 2: the two families -->
+    <section class="mb-14">
+        <h2 class="text-xl font-bold mb-4">Two families: their side, or yours.</h2>
+        <p class="text-mt-muted leading-relaxed mb-4">
+            Group the failures by who is at fault, because that is what decides everything.
+        </p>
+        <p class="text-mt-muted leading-relaxed mb-4">
+            <strong>Their side, or just bad timing.</strong> The provider got overwhelmed (status
+            <span class="font-mono text-sm">429</span>, rate limited), one of their servers hiccuped (status
+            <span class="font-mono text-sm">500</span>, <span class="font-mono text-sm">502</span>, or
+            <span class="font-mono text-sm">503</span>), or the network stalled and the answer never arrived in time
+            (a timeout or a dropped connection). None of these are caused by your request being wrong. The same
+            request, sent again a moment later, has a real shot at succeeding.
+        </p>
+        <p class="text-mt-muted leading-relaxed mb-4">
+            <strong>Your side.</strong> You sent a malformed body or an unknown model name (status
+            <span class="font-mono text-sm">400</span>, bad request), or your API key is wrong or expired (status
+            <span class="font-mono text-sm">401</span>, unauthorized), or the model refused on safety grounds (a
+            content-filter refusal). These come back from a perfectly healthy provider. Sending the identical
+            request again gets you the identical refusal. Retrying just wastes time and, if it is a
+            <span class="font-mono text-sm">429</span> you misread, can dig the hole deeper.
+        </p>
+
+        <RetryableDemo />
+
+        <p class="text-mt-muted leading-relaxed">
+            Click through the cases. The green ones might succeed on a second try because nothing about your request
+            was wrong. The red ones will fail the same way every time, because the problem is baked into what you
+            sent.
+        </p>
+    </section>
+
+    <!-- SECTION 3: the worked table -->
+    <section class="mb-14">
+        <h2 class="text-xl font-bold mb-4">The decision table.</h2>
+        <p class="text-mt-muted leading-relaxed mb-4">
+            Here is the whole rule on one card. The status code on the left, whether to retry in the middle, and the
+            reason on the right.
+        </p>
+        <div class="bg-white border border-mt-border rounded-xl overflow-hidden mb-4">
+            <table class="w-full text-sm">
+                <thead>
+                    <tr class="bg-mt-bg text-left">
+                        <th class="px-4 py-3 font-semibold">Failure</th>
+                        <th class="px-4 py-3 font-semibold">Retry?</th>
+                        <th class="px-4 py-3 font-semibold">Why</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-mt-border">
+                    <tr>
+                        <td class="px-4 py-3 font-mono">429</td>
+                        <td class="px-4 py-3 text-mt-green font-semibold">yes, after a wait</td>
+                        <td class="px-4 py-3 text-mt-muted">Rate limited. Slow down and it clears.</td>
+                    </tr>
+                    <tr>
+                        <td class="px-4 py-3 font-mono">500 / 502 / 503</td>
+                        <td class="px-4 py-3 text-mt-green font-semibold">yes</td>
+                        <td class="px-4 py-3 text-mt-muted">Server hiccup on their side. Usually temporary.</td>
+                    </tr>
+                    <tr>
+                        <td class="px-4 py-3 font-mono">timeout / conn error</td>
+                        <td class="px-4 py-3 text-mt-green font-semibold">yes</td>
+                        <td class="px-4 py-3 text-mt-muted">No answer in time. The next attempt may land.</td>
+                    </tr>
+                    <tr>
+                        <td class="px-4 py-3 font-mono">400</td>
+                        <td class="px-4 py-3 text-mt-rose font-semibold">no</td>
+                        <td class="px-4 py-3 text-mt-muted">Bad request. Your bug. Same body, same failure.</td>
+                    </tr>
+                    <tr>
+                        <td class="px-4 py-3 font-mono">401</td>
+                        <td class="px-4 py-3 text-mt-rose font-semibold">no</td>
+                        <td class="px-4 py-3 text-mt-muted">Bad or missing key. Retrying will not fix it.</td>
+                    </tr>
+                    <tr>
+                        <td class="px-4 py-3 font-mono">content filter</td>
+                        <td class="px-4 py-3 text-mt-rose font-semibold">no</td>
+                        <td class="px-4 py-3 text-mt-muted">A deliberate refusal, not a glitch. It will refuse again.</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <p class="text-mt-muted leading-relaxed">
+            One pattern runs through it: retry the server-side and timing failures, never retry the client errors.
+            The only client-side code worth retrying is <span class="font-mono text-sm">429</span>, and even that
+            one only after you wait, which is the subject of a later lesson.
+        </p>
+
+        <InsightBox>
+            <p class="text-sm">Retry the failures that might succeed next time:
+            <strong>429, 5xx, timeouts</strong>. Never retry the ones that will fail the same way:
+            <strong>400, 401, content refusals</strong>. The question is always "did my request cause this, or did
+            their side just stumble?"</p>
+        </InsightBox>
+    </section>
+
+    <!-- Key takeaways -->
+    <section class="mb-14">
+        <h2 class="text-xl font-bold mb-4">Key takeaways</h2>
+        <div class="space-y-3">
+            <div class="flex items-start gap-3"><div class="w-6 h-6 rounded-full bg-mt-accentLight flex items-center justify-center flex-shrink-0 mt-0.5"><span class="text-mt-accent font-bold text-xs">1</span></div><p class="text-sm">Failures split into two families: transient or server-side (their stumble) and client errors (your bug). The status code tells you which.</p></div>
+            <div class="flex items-start gap-3"><div class="w-6 h-6 rounded-full bg-mt-accentLight flex items-center justify-center flex-shrink-0 mt-0.5"><span class="text-mt-accent font-bold text-xs">2</span></div><p class="text-sm">Retry 429 (after a wait), 5xx, and timeouts. Do not retry 400, 401, or a content refusal: the same request fails the same way.</p></div>
+            <div class="flex items-start gap-3"><div class="w-6 h-6 rounded-full bg-mt-accentLight flex items-center justify-center flex-shrink-0 mt-0.5"><span class="text-mt-accent font-bold text-xs">3</span></div><p class="text-sm">Knowing a failure is retryable is only half the job. Next we ask whether retrying is even safe, because some calls do real work twice.</p></div>
+        </div>
+    </section>
+
+    <LessonNav
+        prevHref="/proxy/streaming-the-answer" prevLabel="Streaming the answer"
+        nextHref="/failure/idempotency" nextLabel="Idempotency: safe to retry?"
+    />
+
+</LessonLayout>
