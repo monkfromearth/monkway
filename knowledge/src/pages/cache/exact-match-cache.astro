@@ -1,0 +1,185 @@
+---
+import '../../styles/global.css';
+import LessonLayout from '../../layouts/LessonLayout.astro';
+import LessonHeader from '../../components/LessonHeader.astro';
+import LessonNav from '../../components/LessonNav.astro';
+import InsightBox from '../../components/InsightBox.astro';
+import ExerciseBox from '../../components/ExerciseBox.astro';
+import TagBadge from '../../components/TagBadge.astro';
+---
+
+<LessonLayout title="Exact-match caching" lessonNumber="4.1" section="Remembering Answers">
+
+    <LessonHeader lessonNumber="4.1" title="Exact-match caching" description="The same question asked twice should not be paid for twice. The simplest cache: store the answer the first time, hand it back for free the next.">
+        <TagBadge variant="concepts">concepts</TagBadge>
+        <TagBadge variant="default">8 min read</TagBadge>
+    </LessonHeader>
+
+    <!-- SECTION 1: hook -->
+    <section class="mb-14">
+        <h2 class="text-xl font-bold mb-4">The monk has seen this traveler before.</h2>
+        <p class="text-mt-muted leading-relaxed mb-4">
+            Picture the gatekeeper monk with a small notebook. When a traveler asks a question and he works out
+            the answer, he writes both down. The next time someone walks up and asks the exact same thing, he does
+            not think it through again. He flips to that line in the notebook and reads the answer straight back.
+            Instant, and it cost him nothing.
+        </p>
+        <p class="text-mt-muted leading-relaxed mb-4">
+            That notebook is a <strong>cache</strong> (a store of past answers you can reuse). For an LLM gateway
+            it matters more than for most systems, because every call to a provider costs real money and real time.
+            A model can take seconds to answer and bills you per token. If your app sends the same request again,
+            paying for it twice is pure waste.
+        </p>
+
+        <InsightBox>
+            <p class="text-sm">A cache stores past answers keyed by the request, so a repeat is served from memory: instant, and free. The gateway never calls the provider for something it already knows.</p>
+        </InsightBox>
+    </section>
+
+    <!-- SECTION 2: the concept, exact-match key -->
+    <section class="mb-14">
+        <h2 class="text-xl font-bold mb-4">The key is the whole request, squeezed into one fingerprint.</h2>
+        <p class="text-mt-muted leading-relaxed mb-4">
+            To look something up in the notebook, the monk needs a way to find the right line fast. A cache does
+            this with a <strong>key</strong>: a short label that stands for the request. The simplest scheme is
+            <strong>exact-match</strong>. Take the full request (the model name, the messages, and the settings
+            like temperature and max tokens), and run it through a hash (a function that turns any input into one
+            fixed-size fingerprint). Identical input gives an identical fingerprint every time.
+        </p>
+        <p class="text-mt-muted leading-relaxed mb-4">
+            That fingerprint is the key. The stored answer is the value. When a new request arrives, you hash it
+            the same way and check: is this key already in the store?
+        </p>
+        <ul class="text-mt-muted leading-relaxed mb-4 list-disc pl-6 space-y-1">
+            <li><strong>Hit:</strong> the key is there. Return the stored answer, skip the provider entirely.</li>
+            <li><strong>Miss:</strong> the key is new. Call the provider, get the answer, then store it under this key for next time.</li>
+        </ul>
+        <p class="text-mt-muted leading-relaxed mb-4">
+            One detail decides whether two requests are "the same": you must hash everything that changes the
+            answer. Same messages but a different model is a different request. Same messages but temperature 0.0
+            versus 0.9 is a different request. Leave a field out of the key and you risk returning an answer that
+            was generated under different settings.
+        </p>
+
+        <InsightBox>
+            <p class="text-sm">Hash the full request (model plus messages plus the settings that affect the answer) into one key. Same bytes in means the same key, which means a hit.</p>
+        </InsightBox>
+    </section>
+
+    <!-- SECTION 3: TTL -->
+    <section class="mb-14">
+        <h2 class="text-xl font-bold mb-4">Answers should not live forever.</h2>
+        <p class="text-mt-muted leading-relaxed mb-4">
+            A notebook entry from last year might be stale. Maybe the question was "what is the latest version of
+            the library?" and the answer has moved on. So each cached answer gets a <strong>TTL</strong> (time to
+            live: how long the entry stays valid). Store the answer with a stamp that says "good until 3pm." After
+            that, the entry is treated as gone. The next matching request is a miss, goes to the provider, and
+            refreshes the entry.
+        </p>
+        <p class="text-mt-muted leading-relaxed">
+            The TTL is a dial you tune. A long TTL saves more money and time, because answers get reused for longer.
+            A short TTL keeps answers fresher, at the cost of more provider calls. Pick it based on how fast the
+            right answer goes stale for your use case.
+        </p>
+    </section>
+
+    <!-- SECTION 4: worked MISS -> HIT table -->
+    <section class="mb-14">
+        <h2 class="text-xl font-bold mb-4">Two calls, worked by hand.</h2>
+        <p class="text-mt-muted leading-relaxed mb-4">
+            Your app sends the same request twice in a row. Same model, same single message, same settings. Walk
+            the two calls through the cache:
+        </p>
+
+        <div class="overflow-x-auto mb-4">
+            <table class="w-full text-sm border border-mt-border rounded-xl overflow-hidden">
+                <thead>
+                    <tr class="bg-mt-bg text-left">
+                        <th class="px-4 py-3 font-semibold">Call</th>
+                        <th class="px-4 py-3 font-semibold">Request</th>
+                        <th class="px-4 py-3 font-semibold">Key found?</th>
+                        <th class="px-4 py-3 font-semibold">What happens</th>
+                        <th class="px-4 py-3 font-semibold">Cost &amp; speed</th>
+                    </tr>
+                </thead>
+                <tbody class="text-xs">
+                    <tr class="border-t border-mt-border">
+                        <td class="px-4 py-3 text-mt-text font-mono">1</td>
+                        <td class="px-4 py-3 text-mt-muted font-mono">"What is 2+2?"</td>
+                        <td class="px-4 py-3"><span class="text-mt-rose font-semibold font-mono">MISS</span></td>
+                        <td class="px-4 py-3 text-mt-muted">Call the provider, get "4", store it under the key</td>
+                        <td class="px-4 py-3 text-mt-muted">full tokens, ~1.2s</td>
+                    </tr>
+                    <tr class="border-t border-mt-border">
+                        <td class="px-4 py-3 text-mt-text font-mono">2</td>
+                        <td class="px-4 py-3 text-mt-muted font-mono">"What is 2+2?"</td>
+                        <td class="px-4 py-3"><span class="text-mt-green font-semibold font-mono">HIT</span></td>
+                        <td class="px-4 py-3 text-mt-muted">Return the stored "4", never touch the provider</td>
+                        <td class="px-4 py-3 text-mt-muted">zero tokens, ~1ms</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <p class="text-mt-muted leading-relaxed">
+            The second call is the whole point: the answer was already in the notebook, so it came back instantly
+            and cost nothing. Multiply that across a busy app where the same handful of prompts repeat all day, and
+            the cache pays for itself many times over.
+        </p>
+    </section>
+
+    <!-- SECTION 5: the limit, forward pointer -->
+    <section class="mb-14">
+        <h2 class="text-xl font-bold mb-4">It only catches the exact same question.</h2>
+        <p class="text-mt-muted leading-relaxed mb-4">
+            Here is the catch built into the word "exact." The key is a fingerprint of the literal bytes. Change a
+            single character and the fingerprint changes completely, so it is a different key, so it is a miss. To
+            the cache, these are three unrelated questions:
+        </p>
+
+        <div class="bg-white border border-mt-border rounded-xl p-5 mb-4 font-mono text-sm space-y-1">
+            <div>"What is 2+2?"</div>
+            <div>"what is 2 + 2 ?"</div>
+            <div>"What is 2+2"</div>
+        </div>
+
+        <p class="text-mt-muted leading-relaxed mb-4">
+            You and I read all three as the same question. The hash does not. Extra spaces, a dropped question
+            mark, a lowercase letter: each one produces a different key and a fresh provider call. Exact-match
+            caching catches only true repeats, byte for byte.
+        </p>
+        <p class="text-mt-muted leading-relaxed">
+            That is the opening for the next lesson. To catch questions that <em>mean</em> the same thing in
+            different words, you need a cache that compares meaning, not bytes (semantic caching).
+        </p>
+
+        <InsightBox>
+            <p class="text-sm">Hash the request, store the answer, set a TTL: an exact repeat becomes instant and free. But only an exact repeat. Near-duplicates that mean the same thing still miss.</p>
+        </InsightBox>
+    </section>
+
+    <ExerciseBox title="Work it out">
+        <p class="text-sm text-mt-muted">
+            Your app sends the same message text three times. First with temperature 0.0, then again with
+            temperature 0.0, then a third time with temperature 0.9. If the temperature is part of the cache key,
+            which of the three calls are hits and which are misses? (Answer: call 2 is a hit; calls 1 and 3 are
+            misses, because call 3's different temperature changes the key.)
+        </p>
+    </ExerciseBox>
+
+    <!-- Key takeaways -->
+    <section class="mb-14">
+        <h2 class="text-xl font-bold mb-4">Key takeaways</h2>
+        <div class="space-y-3">
+            <div class="flex items-start gap-3"><div class="w-6 h-6 rounded-full bg-mt-accentLight flex items-center justify-center flex-shrink-0 mt-0.5"><span class="text-mt-accent font-bold text-xs">1</span></div><p class="text-sm">A cache stores past answers keyed by the request, so a repeat is served from memory instead of the provider: instant and free.</p></div>
+            <div class="flex items-start gap-3"><div class="w-6 h-6 rounded-full bg-mt-accentLight flex items-center justify-center flex-shrink-0 mt-0.5"><span class="text-mt-accent font-bold text-xs">2</span></div><p class="text-sm">Exact-match keys the cache on a hash of the full request, and a TTL expires entries so answers do not go stale.</p></div>
+            <div class="flex items-start gap-3"><div class="w-6 h-6 rounded-full bg-mt-accentLight flex items-center justify-center flex-shrink-0 mt-0.5"><span class="text-mt-accent font-bold text-xs">3</span></div><p class="text-sm">It only catches byte-for-byte repeats, so the same question worded differently still misses, which is what semantic caching fixes next.</p></div>
+        </div>
+    </section>
+
+    <LessonNav
+        prevHref="/routing/fallback" prevLabel="Prev: Fallback when a door is closed"
+        nextHref="/cache/semantic-cache" nextLabel="Next: Caching by meaning"
+    />
+
+</LessonLayout>

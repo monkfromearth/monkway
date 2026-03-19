@@ -1,0 +1,153 @@
+---
+import '../../styles/global.css';
+import LessonLayout from '../../layouts/LessonLayout.astro';
+import LessonHeader from '../../components/LessonHeader.astro';
+import LessonNav from '../../components/LessonNav.astro';
+import InsightBox from '../../components/InsightBox.astro';
+import TagBadge from '../../components/TagBadge.astro';
+import FallbackDemo from '../../components/demos/FallbackDemo.astro';
+---
+
+<LessonLayout title="Fallback when a door is closed" lessonNumber="3.3" section="Choosing a Path">
+
+    <LessonHeader lessonNumber="3.3" title="Fallback when a door is closed" description="The chosen provider is down. A good gateway quietly tries the next one, so the caller still gets an answer.">
+        <TagBadge variant="concepts">concepts</TagBadge>
+        <TagBadge variant="default">9 min read</TagBadge>
+    </LessonHeader>
+
+    <!-- SECTION 1: hook + concept -->
+    <section class="mb-14">
+        <h2 class="text-xl font-bold mb-4">The first road is washed out. Take the second.</h2>
+        <p class="text-mt-muted leading-relaxed mb-4">
+            The gatekeeper sends a traveler down the road the routing policy picked. He gets word back: that road
+            is closed. A bridge is out. He does not send the traveler home. He points to the next road on his list,
+            and the traveler still reaches town. The traveler never even hears about the closed bridge.
+        </p>
+        <p class="text-mt-muted leading-relaxed mb-4">
+            That is <strong>fallback</strong>: when the chosen provider fails, the gateway automatically tries the
+            next candidate, so the caller still gets an answer instead of an error. The provider can fail in a few
+            ways the gateway treats the same here: it is down, it returns a rate-limit response (HTTP 429), or it
+            times out. Any of those means "this door is closed right now."
+        </p>
+        <p class="text-mt-muted leading-relaxed">
+            The point of fallback is that the failure stays the gateway's problem. The client made one request and
+            should get one answer. Which door delivered it is not the client's concern.
+        </p>
+
+        <InsightBox>
+            <p class="text-sm"><strong>Fallback</strong>: when the chosen provider fails (down, 429, or timeout), the gateway tries the next candidate so the caller still gets an answer. The closed door is the gateway's problem to route around, not the client's.</p>
+        </InsightBox>
+    </section>
+
+    <!-- SECTION 2: retry vs fallback -->
+    <section class="mb-14">
+        <h2 class="text-xl font-bold mb-4">Same door again, or a different door?</h2>
+        <p class="text-mt-muted leading-relaxed mb-4">
+            Fallback is easy to confuse with retry, which you met back in Unit 2. They both react to a failure, but
+            they react differently, and the difference is the whole idea.
+        </p>
+        <p class="text-mt-muted leading-relaxed mb-4">
+            <strong>Retry</strong> is "try the same door again." The provider hiccuped, you wait a moment, and you
+            send the same request to the same provider, hoping the blip has passed. Retry makes sense when the
+            failure looks temporary and local: a brief timeout, a single dropped connection.
+        </p>
+        <p class="text-mt-muted leading-relaxed mb-4">
+            <strong>Fallback</strong> is "try a different door." You give up on this provider and send the request
+            to the next one in line. Fallback makes sense when this provider looks genuinely unavailable: it is
+            returning 429s, it is down, it keeps timing out no matter how long you wait.
+        </p>
+        <p class="text-mt-muted leading-relaxed">
+            In practice you use both, in order. Retry the same provider a couple of times; if it still will not
+            answer, fall over to the next one. Retry exhausts the current door; fallback moves to a new one.
+        </p>
+
+        <InsightBox>
+            <p class="text-sm">Retry is "try the same door again" (the blip may pass). Fallback is "try a different door" (this one is out). Typically you retry a provider a few times, and only then fall over to the next.</p>
+        </InsightBox>
+    </section>
+
+    <!-- SECTION 3: the ranked list -->
+    <section class="mb-14">
+        <h2 class="text-xl font-bold mb-4">The order is just the routing policy's list.</h2>
+        <p class="text-mt-muted leading-relaxed mb-4">
+            Fallback needs an answer to one question: when this door closes, which door next? You already have it.
+            The routing policy from the last two lessons does not just name a single winner; it ranks every
+            candidate. Cheapest first, then second cheapest, then third. Or fastest, then next fastest. That ranked
+            list <em>is</em> the fallback order.
+        </p>
+        <p class="text-mt-muted leading-relaxed mb-4">
+            So fallback is almost free once routing exists. The gateway walks the ranked list from the top: try
+            number one; if it fails, try number two; keep going until one answers. The first provider that is up
+            serves the request. Drag nothing here, but click to take a provider down, then send and watch the
+            request trip past the closed doors to the first open one.
+        </p>
+
+        <FallbackDemo />
+
+        <p class="text-mt-muted leading-relaxed">
+            Take provider 1 down and send: the request falls over to provider 2. Take 1 and 2 down: it lands on 3.
+            Take all three down and there is nowhere left to go, so the gateway has to return a real error. Fallback
+            buys you resilience right up until every door is genuinely closed.
+        </p>
+    </section>
+
+    <!-- SECTION 4: the hard case, mid-stream -->
+    <section class="mb-14">
+        <h2 class="text-xl font-bold mb-4">The hard case: failing over mid-stream.</h2>
+        <p class="text-mt-muted leading-relaxed mb-4">
+            Falling over before anything has been sent is clean. The ugly case is failing over <strong>mid-stream</strong>.
+            Recall from Unit 1 that providers can stream the answer back token by token. Suppose the gateway has
+            already streamed twenty tokens of a reply to the client, and <em>then</em> the provider dies.
+        </p>
+        <p class="text-mt-muted leading-relaxed mb-4">
+            Now you have a problem. You cannot ask the next provider to "continue from token twenty." It has no idea
+            what the first provider was saying. Its answer would be its own, starting fresh. To fall over cleanly
+            you would have to throw away the twenty tokens already shown and <strong>restart</strong> the whole
+            generation on the new provider, which means the client sees the reply stutter or begin again.
+        </p>
+        <p class="text-mt-muted leading-relaxed">
+            That is why mid-stream failover is genuinely hard, and why many gateways only fall back <em>before</em>
+            the first token leaves. Once you have started streaming, you are largely committed to the door you
+            picked. It is a real limit worth knowing, not a bug to paper over.
+        </p>
+
+        <InsightBox>
+            <p class="text-sm">Falling over before the first token is clean. Once tokens have streamed to the client, the new provider cannot resume mid-thought, so a true failover means restarting the generation. Many gateways only fall back before streaming begins.</p>
+        </InsightBox>
+    </section>
+
+    <!-- Worked walkthrough -->
+    <section class="mb-14">
+        <h2 class="text-xl font-bold mb-4">One failover, walked through.</h2>
+        <p class="text-mt-muted leading-relaxed mb-4">
+            Say the ranked list is OpenAI first, then Anthropic, then a third provider. A request comes in.
+        </p>
+        <div class="bg-white border border-mt-border rounded-xl p-5 mb-4 font-mono text-sm leading-relaxed">
+            try #1 OpenAI &nbsp;&rarr;&nbsp; <span class="text-mt-rose">503 Service Unavailable</span><br/>
+            (door closed) fall over to next in the ranked list<br/>
+            try #2 Anthropic &nbsp;&rarr;&nbsp; <span class="text-mt-green">200 OK</span><br/>
+            answer returned to client. client never saw the 503.
+        </div>
+        <p class="text-mt-muted leading-relaxed">
+            The client sent one request and got one good answer. The fact that the first provider was down stayed
+            entirely inside the gateway. That is fallback doing its job: the failure happened, and the caller never
+            had to know.
+        </p>
+    </section>
+
+    <!-- Key takeaways -->
+    <section class="mb-14">
+        <h2 class="text-xl font-bold mb-4">Key takeaways</h2>
+        <div class="space-y-3">
+            <div class="flex items-start gap-3"><div class="w-6 h-6 rounded-full bg-mt-accentLight flex items-center justify-center flex-shrink-0 mt-0.5"><span class="text-mt-accent font-bold text-xs">1</span></div><p class="text-sm">Fallback is switching to the next provider when the chosen one fails (down, 429, or timeout), so the caller still gets an answer.</p></div>
+            <div class="flex items-start gap-3"><div class="w-6 h-6 rounded-full bg-mt-accentLight flex items-center justify-center flex-shrink-0 mt-0.5"><span class="text-mt-accent font-bold text-xs">2</span></div><p class="text-sm">Retry tries the same door again; fallback tries a different one. The routing policy's ranked list is the fallback order, so fallback comes almost free once routing exists.</p></div>
+            <div class="flex items-start gap-3"><div class="w-6 h-6 rounded-full bg-mt-accentLight flex items-center justify-center flex-shrink-0 mt-0.5"><span class="text-mt-accent font-bold text-xs">3</span></div><p class="text-sm">Failing over before the first token is clean; once a stream has started, the new provider cannot resume mid-thought, so failover means restarting the generation.</p></div>
+        </div>
+    </section>
+
+    <LessonNav
+        prevHref="/routing/cost-latency-quality" prevLabel="Prev: Cost, latency, quality"
+        nextHref="/cache/exact-match-cache" nextLabel="Next: Exact-match caching"
+    />
+
+</LessonLayout>

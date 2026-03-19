@@ -1,0 +1,186 @@
+---
+import '../../styles/global.css';
+import LessonLayout from '../../layouts/LessonLayout.astro';
+import LessonHeader from '../../components/LessonHeader.astro';
+import LessonNav from '../../components/LessonNav.astro';
+import InsightBox from '../../components/InsightBox.astro';
+import TagBadge from '../../components/TagBadge.astro';
+import StepNumber from '../../components/StepNumber.astro';
+---
+
+<LessonLayout title="Many providers, one choice" lessonNumber="3.1" section="Choosing a Path">
+
+    <LessonHeader lessonNumber="3.1" title="Many providers, one choice" description="When several providers can answer the same request, the gateway has to pick one. That pick is a policy, not an accident.">
+        <TagBadge variant="concepts">concepts</TagBadge>
+        <TagBadge variant="default">8 min read</TagBadge>
+    </LessonHeader>
+
+    <!-- SECTION 1: hook + concept -->
+    <section class="mb-14">
+        <h2 class="text-xl font-bold mb-4">Three roads, all going to the same town.</h2>
+        <p class="text-mt-muted leading-relaxed mb-4">
+            A traveler reaches the gate and needs to get to the next town. There are three roads. One is short but
+            full of potholes. One is smooth but long. One is paid, fast, and well kept. All three arrive. The
+            gatekeeper has to point down exactly one of them. He cannot say "take all three."
+        </p>
+        <p class="text-mt-muted leading-relaxed mb-4">
+            That choice is <strong>routing</strong>: when more than one provider can serve a request, the gateway
+            decides which one actually gets it. Several providers can answer a chat request equally well. Only one
+            of them will. Routing is the act of choosing among the ones that can.
+        </p>
+        <p class="text-mt-muted leading-relaxed mb-4">
+            The important word is <em>can</em>. Routing only kicks in when you have real options. If only one
+            provider supports the model the client asked for, there is nothing to route; the request goes there.
+            Routing matters the moment two or more doors could each handle the same traveler.
+        </p>
+
+        <InsightBox>
+            <p class="text-sm"><strong>Routing</strong> is picking which provider serves a request, out of the several that could. No options, no routing. The interesting case is when more than one door fits.</p>
+        </InsightBox>
+    </section>
+
+    <!-- SECTION 2: a policy is the rule -->
+    <section class="mb-14">
+        <h2 class="text-xl font-bold mb-4">The rule behind the pick is a policy.</h2>
+        <p class="text-mt-muted leading-relaxed mb-4">
+            The gateway does not choose on a hunch. It follows a stated rule, the same one every time, so the
+            choice is predictable and you can reason about it. That rule is the <strong>routing policy</strong>.
+            A few common ones:
+        </p>
+
+        <div class="space-y-4 mb-4">
+            <div class="flex items-start gap-4">
+                <StepNumber number="1" color="accent" />
+                <div>
+                    <p class="font-semibold text-sm mb-1">Cheapest.</p>
+                    <p class="text-mt-muted text-sm leading-relaxed">Send the request to whichever provider costs the least for this call. Good when you are watching the bill and the answers are close enough in quality.</p>
+                </div>
+            </div>
+            <div class="flex items-start gap-4">
+                <StepNumber number="2" color="lav" />
+                <div>
+                    <p class="font-semibold text-sm mb-1">Fastest.</p>
+                    <p class="text-mt-muted text-sm leading-relaxed">Send it to whoever tends to answer quickest. Good for anything a person is waiting on, where a slow reply feels broken.</p>
+                </div>
+            </div>
+            <div class="flex items-start gap-4">
+                <StepNumber number="3" color="blue" />
+                <div>
+                    <p class="font-semibold text-sm mb-1">Highest quality.</p>
+                    <p class="text-mt-muted text-sm leading-relaxed">Send it to the strongest model for the job, cost and speed second. Good for hard reasoning or anything customer-facing where a weak answer is worse than a slow or pricey one.</p>
+                </div>
+            </div>
+            <div class="flex items-start gap-4">
+                <StepNumber number="4" color="green" />
+                <div>
+                    <p class="font-semibold text-sm mb-1">Round-robin or weighted.</p>
+                    <p class="text-mt-muted text-sm leading-relaxed">Spread requests across providers in turn, or by a set share (70 percent to one, 30 percent to another). Good for balancing load, or staying inside two providers' rate limits at once.</p>
+                </div>
+            </div>
+        </div>
+
+        <p class="text-mt-muted leading-relaxed">
+            To follow any of these, the gateway needs facts about each provider: its <strong>price</strong> per
+            request, its <strong>observed latency</strong> (how fast it has actually been answering lately), and
+            its <strong>capability</strong> (does it even support the model and features this request needs).
+            Without those, a policy is just a wish.
+        </p>
+    </section>
+
+    <!-- SECTION 3: static vs dynamic -->
+    <section class="mb-14">
+        <h2 class="text-xl font-bold mb-4">Fixed order, or read the road as you go.</h2>
+        <p class="text-mt-muted leading-relaxed mb-4">
+            Policies come in two flavors. A <strong>static</strong> policy is a fixed preference order decided
+            ahead of time: always try provider A, then B, then C. It never changes mid-flight. Simple, predictable,
+            and it does not need live measurements. The downside is that it ignores what is happening right now. If
+            A is having a bad minute, a static policy keeps sending to A anyway.
+        </p>
+        <p class="text-mt-muted leading-relaxed mb-4">
+            A <strong>dynamic</strong> policy decides per request, using live signals: which provider is currently
+            healthy, which has been fastest in the last few minutes, which is not rate-limited at the moment. It
+            reacts to the road as it is, not as it was when you wrote the config. The cost is that it needs that
+            live data to be trustworthy, and it is harder to predict and debug.
+        </p>
+        <p class="text-mt-muted leading-relaxed">
+            Neither is "better." A static order is a fine default. You reach for a dynamic policy when providers
+            actually vary minute to minute and you want the gateway to notice.
+        </p>
+
+        <InsightBox>
+            <p class="text-sm"><strong>Static</strong>: a fixed try-order, set ahead of time, ignores live state. <strong>Dynamic</strong>: chosen per request from live latency and health. Start static; go dynamic when the road really changes underfoot.</p>
+        </InsightBox>
+    </section>
+
+    <!-- SECTION 4: worked example -->
+    <section class="mb-14">
+        <h2 class="text-xl font-bold mb-4">Same three providers, two policies, two winners.</h2>
+        <p class="text-mt-muted leading-relaxed mb-4">
+            Say three providers can all answer this request. Here is what the gateway knows about each, for this
+            call. Cost is the price of the request; latency is how long it has been taking lately.
+        </p>
+
+        <div class="bg-white border border-mt-border rounded-xl overflow-hidden mb-4">
+            <table class="w-full text-sm font-mono">
+                <thead>
+                    <tr class="border-b border-mt-border text-mt-muted">
+                        <th class="text-left px-4 py-2 font-semibold">Provider</th>
+                        <th class="text-left px-4 py-2 font-semibold">Cost</th>
+                        <th class="text-left px-4 py-2 font-semibold">Latency</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr class="border-b border-mt-border">
+                        <td class="px-4 py-2 font-semibold">A</td>
+                        <td class="px-4 py-2 text-mt-green">$0.002</td>
+                        <td class="px-4 py-2">900 ms</td>
+                    </tr>
+                    <tr class="border-b border-mt-border">
+                        <td class="px-4 py-2 font-semibold">B</td>
+                        <td class="px-4 py-2">$0.006</td>
+                        <td class="px-4 py-2 text-mt-blue">300 ms</td>
+                    </tr>
+                    <tr>
+                        <td class="px-4 py-2 font-semibold">C</td>
+                        <td class="px-4 py-2">$0.010</td>
+                        <td class="px-4 py-2">600 ms</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <p class="text-mt-muted leading-relaxed mb-4">
+            Run the <strong>cheapest</strong> policy: scan the cost column, pick the smallest. That is
+            <strong>A</strong> at $0.002, even though A is the slowest of the three.
+        </p>
+        <p class="text-mt-muted leading-relaxed mb-4">
+            Now run the <strong>fastest</strong> policy on the very same table: scan the latency column, pick the
+            smallest. That is <strong>B</strong> at 300 ms, even though B costs three times what A does.
+        </p>
+        <p class="text-mt-muted leading-relaxed">
+            Same providers, same numbers, same request. The only thing that changed was the policy, and the winner
+            flipped from A to B. The pick was never about the providers alone. It was about what you told the
+            gateway to optimize.
+        </p>
+
+        <InsightBox>
+            <p class="text-sm">Routing is a policy, not a default. Name what you are optimizing (cost, latency, or quality) and the choice falls out of the numbers. Change the goal and the same table picks a different door.</p>
+        </InsightBox>
+    </section>
+
+    <!-- Key takeaways -->
+    <section class="mb-14">
+        <h2 class="text-xl font-bold mb-4">Key takeaways</h2>
+        <div class="space-y-3">
+            <div class="flex items-start gap-3"><div class="w-6 h-6 rounded-full bg-mt-accentLight flex items-center justify-center flex-shrink-0 mt-0.5"><span class="text-mt-accent font-bold text-xs">1</span></div><p class="text-sm">Routing is choosing which provider serves a request among the several that could; it only matters when you actually have options.</p></div>
+            <div class="flex items-start gap-3"><div class="w-6 h-6 rounded-full bg-mt-accentLight flex items-center justify-center flex-shrink-0 mt-0.5"><span class="text-mt-accent font-bold text-xs">2</span></div><p class="text-sm">A routing policy is the stated rule (cheapest, fastest, highest-quality, round-robin, weighted), and it needs each provider's price, observed latency, and capability to run.</p></div>
+            <div class="flex items-start gap-3"><div class="w-6 h-6 rounded-full bg-mt-accentLight flex items-center justify-center flex-shrink-0 mt-0.5"><span class="text-mt-accent font-bold text-xs">3</span></div><p class="text-sm">Static policies use a fixed try-order; dynamic ones decide per request from live latency and health. The same table picks a different winner once you change what you optimize.</p></div>
+        </div>
+    </section>
+
+    <LessonNav
+        prevHref="/failure/timeouts-and-deadlines" prevLabel="Prev: Timeouts and deadlines"
+        nextHref="/routing/cost-latency-quality" nextLabel="Next: Cost, latency, quality"
+    />
+
+</LessonLayout>

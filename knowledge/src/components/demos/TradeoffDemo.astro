@@ -1,0 +1,120 @@
+---
+/**
+ * TradeoffDemo — drag a handle on a track between two poles, "Cost" and "Latency".
+ * The handle position sets a weight (0..1, snapped to 0.1). Three provider cards each
+ * have a cost and a latency. A score is computed per provider from the weight, and the
+ * lowest-scoring (winning) provider is highlighted. Dragging from the Cost end to the
+ * Latency end flips which provider wins.
+ *
+ * score = weight * normCost + (1 - weight) * normLatency   (lower is better)
+ * weight near 1 = "I care about cost"; weight near 0 = "I care about latency".
+ */
+const W = 320, H = 64, pad = 24;
+const trackY = 34;
+const startWeight = 0.5;
+const sx = (w: number) => pad + w * (W - 2 * pad);
+
+// Three providers. A is cheap but slow; B is fast but mid-priced; C is pricey and middling.
+const providers = [
+    { id: 'A', cost: 0.002, latency: 900 },
+    { id: 'B', cost: 0.006, latency: 300 },
+    { id: 'C', cost: 0.010, latency: 600 },
+];
+const costs = providers.map((p) => p.cost);
+const lats = providers.map((p) => p.latency);
+---
+
+<div class="mt-demo mw-tradeoff-demo my-6 bg-white border border-mt-border rounded-2xl p-6"
+     data-w={W} data-pad={pad}
+     data-costs={costs.join(',')} data-lats={lats.join(',')}>
+    <p class="text-xs uppercase tracking-wide text-mt-muted font-semibold mb-3 text-center">Drag the handle: what do you care about more?</p>
+
+    <div class="flex items-center justify-between text-xs font-semibold mb-1 px-1">
+        <span class="text-mt-accent">Cost</span>
+        <span class="text-mt-blue">Latency</span>
+    </div>
+
+    <svg viewBox={`0 0 ${W} ${H}`} class="w-full max-w-md mx-auto block" role="img" aria-label="drag a handle between caring about cost and caring about latency">
+        <line x1={pad} y1={trackY} x2={W - pad} y2={trackY} stroke="#EFE8E2" stroke-width="6" stroke-linecap="round" />
+        <circle data-handle cx={sx(startWeight)} cy={trackY} r="11" fill="#fff" stroke="#7B6CB5" stroke-width="3" class="mt-grab" style="cursor:pointer" />
+    </svg>
+
+    <p class="text-center font-mono text-sm mb-5">
+        weight on cost = <span data-weight class="text-mt-lav font-semibold">0.5</span>
+    </p>
+
+    <div class="grid grid-cols-3 gap-3">
+        {providers.map((p, i) => (
+            <div data-card={i} class="rounded-xl border-2 border-mt-border bg-mt-card px-3 py-3 text-center transition-colors">
+                <div class="flex items-center justify-center gap-2 mb-2">
+                    <span class="font-mono font-bold text-sm">{p.id}</span>
+                    <span data-tag={i} class="text-[10px] font-semibold uppercase tracking-wide text-mt-green opacity-0">chosen</span>
+                </div>
+                <p class="font-mono text-xs text-mt-muted">cost <span class="text-mt-text">${p.cost.toFixed(3)}</span></p>
+                <p class="font-mono text-xs text-mt-muted">lat <span class="text-mt-text">{p.latency} ms</span></p>
+                <p class="font-mono text-xs mt-2 text-mt-muted">score <span data-score={i} class="text-mt-lav font-semibold">0.00</span></p>
+            </div>
+        ))}
+    </div>
+</div>
+
+<script>
+    import { gsap, draggable, clamp, REDUCED } from '../../lib/interact';
+
+    document.querySelectorAll<HTMLElement>('.mw-tradeoff-demo').forEach((root) => {
+        const W = Number(root.dataset.w), pad = Number(root.dataset.pad);
+        const costs = (root.dataset.costs || '').split(',').map(Number);
+        const lats = (root.dataset.lats || '').split(',').map(Number);
+
+        const svg = root.querySelector<SVGSVGElement>('svg')!;
+        const handle = root.querySelector<SVGCircleElement>('[data-handle]')!;
+        const weightEl = root.querySelector<HTMLElement>('[data-weight]')!;
+
+        const trackY = 34;
+        const sx = (w: number) => pad + w * (W - 2 * pad);
+        const invW = (px: number) => clamp((px - pad) / (W - 2 * pad), 0, 1);
+
+        // normalize each metric to 0..1 across the providers (min -> 0, max -> 1)
+        const norm = (vals: number[]) => {
+            const lo = Math.min(...vals), hi = Math.max(...vals);
+            const span = hi - lo || 1;
+            return vals.map((v) => (v - lo) / span);
+        };
+        const nCost = norm(costs);
+        const nLat = norm(lats);
+
+        let weight = 0.5;
+
+        function render() {
+            weightEl.textContent = weight.toFixed(1);
+
+            // score per provider; lower is better
+            const scores = costs.map((_, i) => weight * nCost[i] + (1 - weight) * nLat[i]);
+            const best = scores.indexOf(Math.min(...scores));
+
+            scores.forEach((s, i) => {
+                const scoreEl = root.querySelector<HTMLElement>(`[data-score="${i}"]`)!;
+                scoreEl.textContent = s.toFixed(2);
+                const card = root.querySelector<HTMLElement>(`[data-card="${i}"]`)!;
+                const tag = root.querySelector<HTMLElement>(`[data-tag="${i}"]`)!;
+                if (i === best) {
+                    card.classList.add('border-mt-green');
+                    card.classList.remove('border-mt-border');
+                    tag.classList.remove('opacity-0');
+                } else {
+                    card.classList.remove('border-mt-green');
+                    card.classList.add('border-mt-border');
+                    tag.classList.add('opacity-0');
+                }
+            });
+
+            const to = { attr: { cx: sx(weight) } };
+            REDUCED ? gsap.set(handle, to) : gsap.to(handle, { ...to, duration: 0.12, overwrite: true });
+        }
+
+        // drag: map x -> weight, snap to 0.1 steps; y is ignored (handle stays on track)
+        draggable(svg, handle, (x) => { weight = Math.round(invW(x) * 10) / 10; render(); });
+
+        render();
+    });
+</script>

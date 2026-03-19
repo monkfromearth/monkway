@@ -1,0 +1,178 @@
+---
+import '../../styles/global.css';
+import LessonLayout from '../../layouts/LessonLayout.astro';
+import LessonHeader from '../../components/LessonHeader.astro';
+import LessonNav from '../../components/LessonNav.astro';
+import InsightBox from '../../components/InsightBox.astro';
+import TagBadge from '../../components/TagBadge.astro';
+import TradeoffDemo from '../../components/demos/TradeoffDemo.astro';
+---
+
+<LessonLayout title="Cost, latency, quality" lessonNumber="3.2" section="Choosing a Path">
+
+    <LessonHeader lessonNumber="3.2" title="Cost, latency, quality" description="The three pulls every router balances, and why you usually cannot have all three at once.">
+        <TagBadge variant="concepts">concepts</TagBadge>
+        <TagBadge variant="default">9 min read</TagBadge>
+    </LessonHeader>
+
+    <!-- SECTION 1: the trilemma -->
+    <section class="mb-14">
+        <h2 class="text-xl font-bold mb-4">Cheap, fast, good. Pick two.</h2>
+        <p class="text-mt-muted leading-relaxed mb-4">
+            There is an old line about any job: you can have it cheap, fast, or good, but not all three at once.
+            Routing lives inside exactly that bind. Every request pulls on three things at the same time:
+            <strong>cost</strong> (what the call charges you), <strong>latency</strong> (how long the answer takes),
+            and <strong>quality</strong> (how good the answer is).
+        </p>
+        <p class="text-mt-muted leading-relaxed mb-4">
+            The trouble is they pull against each other. The cheapest model is often the slower or weaker one. The
+            fastest one may cost more. The best quality model is frequently the slow and pricey one. You rarely
+            find a provider that is the cheapest, the fastest, and the best all at once. If you did, routing would
+            be trivial; you would always pick it.
+        </p>
+        <p class="text-mt-muted leading-relaxed">
+            So routing is not about finding a perfect provider. It is about deciding, for this request, which of
+            the three pulls matters most, and accepting that you give up a little on the others.
+        </p>
+
+        <InsightBox>
+            <p class="text-sm">Cost, latency, and quality pull against each other. There is no provider that wins all three. Routing means choosing which pull leads, knowing you trade away some of the rest.</p>
+        </InsightBox>
+    </section>
+
+    <!-- SECTION 2: weight turns "what I value" into a pick -->
+    <section class="mb-14">
+        <h2 class="text-xl font-bold mb-4">A weight turns "what I value" into "who serves this."</h2>
+        <p class="text-mt-muted leading-relaxed mb-4">
+            How does the gateway act on a preference like "I care more about speed than money"? It scores each
+            provider with a <strong>weighted blend</strong>: take the provider's numbers, multiply each by how much
+            you care about it, add them up, and the lowest total wins. The weight is just a dial that says how much
+            each pull counts.
+        </p>
+        <p class="text-mt-muted leading-relaxed mb-4">
+            Before scoring, the gateway puts the numbers on the same scale. Cost is in dollars; latency is in
+            milliseconds. You cannot add those directly. So it <strong>normalizes</strong> each one across the
+            candidates: the best becomes 0, the worst becomes 1, the rest land in between. Now a cost score and a
+            latency score are comparable, and a weight can mix them.
+        </p>
+        <p class="text-mt-muted leading-relaxed">
+            Drag the handle below. At one end the gateway cares only about cost; at the other, only about latency.
+            Each card shows its score (lower is better), and the chosen provider lights up. Watch the winner change
+            as you slide.
+        </p>
+
+        <TradeoffDemo />
+
+        <InsightBox>
+            <p class="text-sm">The weight is the knob. Slide it toward cost and the cheap-but-slow provider wins; slide it toward latency and the fast-but-pricier one takes over. One dial, computed live, decides the door.</p>
+        </InsightBox>
+    </section>
+
+    <!-- SECTION 3: worked example by hand -->
+    <section class="mb-14">
+        <h2 class="text-xl font-bold mb-4">Score it by hand.</h2>
+        <p class="text-mt-muted leading-relaxed mb-4">
+            Take three providers. A is cheap but slow, B is fast but mid-priced, C sits in the middle on both.
+        </p>
+
+        <div class="bg-white border border-mt-border rounded-xl overflow-hidden mb-4">
+            <table class="w-full text-sm font-mono">
+                <thead>
+                    <tr class="border-b border-mt-border text-mt-muted">
+                        <th class="text-left px-4 py-2 font-semibold">Provider</th>
+                        <th class="text-left px-4 py-2 font-semibold">Cost</th>
+                        <th class="text-left px-4 py-2 font-semibold">Latency</th>
+                        <th class="text-left px-4 py-2 font-semibold">Cost (0..1)</th>
+                        <th class="text-left px-4 py-2 font-semibold">Lat (0..1)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr class="border-b border-mt-border">
+                        <td class="px-4 py-2 font-semibold">A</td>
+                        <td class="px-4 py-2 text-mt-green">$0.002</td>
+                        <td class="px-4 py-2">900 ms</td>
+                        <td class="px-4 py-2">0.0</td>
+                        <td class="px-4 py-2">1.0</td>
+                    </tr>
+                    <tr class="border-b border-mt-border">
+                        <td class="px-4 py-2 font-semibold">B</td>
+                        <td class="px-4 py-2">$0.006</td>
+                        <td class="px-4 py-2 text-mt-blue">300 ms</td>
+                        <td class="px-4 py-2">0.5</td>
+                        <td class="px-4 py-2">0.0</td>
+                    </tr>
+                    <tr>
+                        <td class="px-4 py-2 font-semibold">C</td>
+                        <td class="px-4 py-2">$0.010</td>
+                        <td class="px-4 py-2">600 ms</td>
+                        <td class="px-4 py-2">1.0</td>
+                        <td class="px-4 py-2">0.5</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <p class="text-mt-muted leading-relaxed mb-4">
+            The last two columns are the normalized scores: cheapest cost (A) is 0.0, priciest (C) is 1.0; fastest
+            latency (B) is 0.0, slowest (A) is 1.0. Now blend them with
+            <span class="font-mono">score = w &times; cost + (1 - w) &times; lat</span>, where
+            <span class="font-mono">w</span> is the weight on cost.
+        </p>
+
+        <div class="bg-white border border-mt-border rounded-xl p-5 mb-4 font-mono text-sm leading-relaxed">
+            <span class="text-mt-accent">Lean cost (w = 0.8):</span><br/>
+            A = 0.8&times;0.0 + 0.2&times;1.0 = 0.20<br/>
+            B = 0.8&times;0.5 + 0.2&times;0.0 = 0.40<br/>
+            C = 0.8&times;1.0 + 0.2&times;0.5 = 0.90<br/>
+            &rarr; lowest is <span class="text-mt-green">A</span>, the cheap one.
+            <br/><br/>
+            <span class="text-mt-blue">Lean latency (w = 0.2):</span><br/>
+            A = 0.2&times;0.0 + 0.8&times;1.0 = 0.80<br/>
+            B = 0.2&times;0.5 + 0.8&times;0.0 = 0.10<br/>
+            C = 0.2&times;1.0 + 0.8&times;0.5 = 0.60<br/>
+            &rarr; lowest is <span class="text-mt-green">B</span>, the fast one.
+        </div>
+
+        <p class="text-mt-muted leading-relaxed">
+            Nothing about the providers changed between the two blocks. Only the weight moved, and the winner went
+            from A to B. That is the whole job of a scoring router: turn one number that says what you value into
+            one provider that serves the request.
+        </p>
+    </section>
+
+    <!-- SECTION 4: no free lunch -->
+    <section class="mb-14">
+        <h2 class="text-xl font-bold mb-4">There is no free lunch.</h2>
+        <p class="text-mt-muted leading-relaxed mb-4">
+            Notice what the weight does <em>not</em> do: it never gives you a provider that is best on every axis.
+            When A wins on cost, you accepted its slow latency. When B wins on speed, you accepted its higher
+            price. The weight does not escape the tradeoff. It just states, on the record, which side you are
+            willing to lose on.
+        </p>
+        <p class="text-mt-muted leading-relaxed">
+            That is a feature, not a flaw. A good router does not pretend the tradeoff is gone. It makes the
+            tradeoff explicit and consistent, so every request is decided the same honest way instead of by
+            whoever's config got pasted last.
+        </p>
+
+        <InsightBox>
+            <p class="text-sm">There is no free lunch: every weight buys one axis by spending another. The router turns "what do I value" (a single weight) into "who serves this request" (a single provider). The cost is always paid somewhere.</p>
+        </InsightBox>
+    </section>
+
+    <!-- Key takeaways -->
+    <section class="mb-14">
+        <h2 class="text-xl font-bold mb-4">Key takeaways</h2>
+        <div class="space-y-3">
+            <div class="flex items-start gap-3"><div class="w-6 h-6 rounded-full bg-mt-accentLight flex items-center justify-center flex-shrink-0 mt-0.5"><span class="text-mt-accent font-bold text-xs">1</span></div><p class="text-sm">Cost, latency, and quality pull against each other; no single provider wins all three, so routing is choosing which pull leads.</p></div>
+            <div class="flex items-start gap-3"><div class="w-6 h-6 rounded-full bg-mt-accentLight flex items-center justify-center flex-shrink-0 mt-0.5"><span class="text-mt-accent font-bold text-xs">2</span></div><p class="text-sm">A scoring router normalizes each metric to a common 0-to-1 scale, blends them with a weight, and picks the lowest total.</p></div>
+            <div class="flex items-start gap-3"><div class="w-6 h-6 rounded-full bg-mt-accentLight flex items-center justify-center flex-shrink-0 mt-0.5"><span class="text-mt-accent font-bold text-xs">3</span></div><p class="text-sm">The weight turns "what I value" into "who serves this," but it never beats the tradeoff; it just records which axis you are willing to give up.</p></div>
+        </div>
+    </section>
+
+    <LessonNav
+        prevHref="/routing/routing-policy" prevLabel="Prev: Many providers, one choice"
+        nextHref="/routing/fallback" nextLabel="Next: Fallback when a door is closed"
+    />
+
+</LessonLayout>

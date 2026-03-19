@@ -1,0 +1,165 @@
+---
+/**
+ * NearestDemo: nearest-neighbor search in a 2D vector space.
+ * Five cached question points (Q1..Q5) sit on a plane. Drag the query dot
+ * anywhere (continuous, no snap). A line is drawn to its NEAREST cached point,
+ * which highlights, and a faint threshold circle (fixed radius) is drawn around
+ * the query. Nearest inside the radius -> HIT (green); otherwise -> MISS.
+ *
+ * Distances here are plain 2D (Euclidean) on the svg plane, in "units" where the
+ * radius is a fixed threshold. The worked example in the lesson uses the same idea.
+ */
+const W = 360, H = 300;
+// scale: 1 unit = UNIT px. Threshold radius = 0.10 units. Points placed by unit coords.
+const UNIT = 280; // so the 0..1 region roughly fills the plane
+const RADIUS_UNITS = 0.10;
+const ox = 30, oy = 30; // origin offset in px
+
+// cached points in unit-space (x, y in 0..1-ish)
+const cached = [
+  { id: 'Q1', x: 0.18, y: 0.22 },
+  { id: 'Q2', x: 0.70, y: 0.18 },
+  { id: 'Q3', x: 0.40, y: 0.55 },
+  { id: 'Q4', x: 0.82, y: 0.68 },
+  { id: 'Q5', x: 0.20, y: 0.78 },
+];
+// default query spot: close to Q3 (distance ~0.07, inside the 0.10 radius -> HIT)
+const startQ = { x: 0.40, y: 0.48 };
+
+const px = (ux: number) => ox + ux * UNIT;
+const py = (uy: number) => oy + uy * UNIT;
+const rPx = RADIUS_UNITS * UNIT;
+---
+
+<div class="mt-demo mw-nearest-demo my-6 bg-white border border-mt-border rounded-2xl p-6"
+     data-unit={UNIT} data-ox={ox} data-oy={oy} data-radius={RADIUS_UNITS}
+     data-cached={JSON.stringify(cached)} data-startx={startQ.x} data-starty={startQ.y}>
+    <p class="text-xs uppercase tracking-wide text-mt-muted font-semibold mb-3 text-center">Drag the query point. The nearest cached question lights up.</p>
+
+    <svg viewBox={`0 0 ${W} ${H}`} class="w-full max-w-md mx-auto block" role="img" aria-label="drag a query point to find its nearest cached neighbor in vector space">
+        <!-- plane background -->
+        <rect x="2" y="2" width={W - 4} height={H - 4} rx="12" fill="#FBF9F7" stroke="#EFE8E2" stroke-width="2" />
+
+        <!-- line from query to its nearest cached point (drawn first, under the dots) -->
+        <line data-link x1={px(startQ.x)} y1={py(startQ.y)} x2={px(cached[2].x)} y2={py(cached[2].y)}
+              stroke="#7B6CB5" stroke-width="2.5" stroke-linecap="round" />
+
+        <!-- threshold radius circle around the query -->
+        <circle data-radius-ring cx={px(startQ.x)} cy={py(startQ.y)} r={rPx}
+                fill="#7B6CB5" fill-opacity="0.07" stroke="#7B6CB5" stroke-width="1.5" stroke-dasharray="4 4" />
+
+        <!-- cached question points -->
+        {cached.map((c, i) => (
+            <g data-cnode={i}>
+                <circle cx={px(c.x)} cy={py(c.y)} r="9" fill="#E8F2EA" stroke="#5C9367" stroke-width="2.5" />
+                <text x={px(c.x)} y={py(c.y) - 14} text-anchor="middle" font-size="11" fill="#5C9367" font-family="monospace" font-weight="600">{c.id}</text>
+            </g>
+        ))}
+
+        <!-- the draggable query dot -->
+        <circle data-query cx={px(startQ.x)} cy={py(startQ.y)} r="11" fill="#fff" stroke="#C96F5A" stroke-width="3" class="mt-grab" />
+        <text data-query-label x={px(startQ.x)} y={py(startQ.y) + 26} text-anchor="middle" font-size="11" fill="#C96F5A" font-family="monospace" font-weight="600">query</text>
+    </svg>
+
+    <p class="text-center font-mono text-sm mt-3">
+        nearest = <span data-near class="text-mt-green font-semibold">Q3</span> &nbsp;
+        distance = <span data-dist class="text-mt-lav font-semibold">0.07</span> &nbsp;
+        radius = <span class="text-mt-muted">0.10</span> &nbsp;&rarr;&nbsp;
+        <span data-verdict class="font-semibold">HIT</span>
+    </p>
+</div>
+
+<script>
+    import { gsap, draggable, clamp, REDUCED } from '../../lib/interact';
+
+    type Pt = { id: string; x: number; y: number };
+
+    document.querySelectorAll<HTMLElement>('.mw-nearest-demo').forEach((root) => {
+        const UNIT = Number(root.dataset.unit);
+        const ox = Number(root.dataset.ox), oy = Number(root.dataset.oy);
+        const radiusUnits = Number(root.dataset.radius);
+        const cached: Pt[] = JSON.parse(root.dataset.cached || '[]');
+
+        const svg = root.querySelector<SVGSVGElement>('svg')!;
+        const query = root.querySelector<SVGCircleElement>('[data-query]')!;
+        const queryLabel = root.querySelector<SVGTextElement>('[data-query-label]')!;
+        const link = root.querySelector<SVGLineElement>('[data-link]')!;
+        const ring = root.querySelector<SVGCircleElement>('[data-radius-ring]')!;
+        const nearEl = root.querySelector<HTMLElement>('[data-near]')!;
+        const distEl = root.querySelector<HTMLElement>('[data-dist]')!;
+        const verdictEl = root.querySelector<HTMLElement>('[data-verdict]')!;
+
+        // px <-> unit conversions
+        const toPxX = (ux: number) => ox + ux * UNIT;
+        const toPxY = (uy: number) => oy + uy * UNIT;
+        const toUnitX = (px: number) => (px - ox) / UNIT;
+        const toUnitY = (px: number) => (px - oy) / UNIT;
+
+        // query position in unit-space
+        let qx = Number(root.dataset.startx);
+        let qy = Number(root.dataset.starty);
+
+        function render() {
+            // find nearest cached point (Euclidean in unit-space)
+            let best = 0, bestD = Infinity;
+            cached.forEach((c, i) => {
+                const d = Math.hypot(c.x - qx, c.y - qy);
+                if (d < bestD) { bestD = d; best = i; }
+            });
+            const near = cached[best];
+            const hit = bestD <= radiusUnits;
+
+            // move the query dot, its label, and the radius ring
+            const qpx = toPxX(qx), qpy = toPxY(qy);
+            const setQ = { attr: { cx: qpx, cy: qpy } };
+            const setLabel = { attr: { x: qpx, y: qpy + 26 } };
+            const setRing = { attr: { cx: qpx, cy: qpy } };
+            if (REDUCED) {
+                gsap.set(query, setQ); gsap.set(queryLabel, setLabel); gsap.set(ring, setRing);
+            } else {
+                gsap.to(query, { ...setQ, duration: 0.1, overwrite: true });
+                gsap.to(queryLabel, { ...setLabel, duration: 0.1, overwrite: true });
+                gsap.to(ring, { ...setRing, duration: 0.1, overwrite: true });
+            }
+
+            // draw the line to the nearest cached point
+            const setLink = { attr: { x1: qpx, y1: qpy, x2: toPxX(near.x), y2: toPxY(near.y) } };
+            REDUCED ? gsap.set(link, setLink) : gsap.to(link, { ...setLink, duration: 0.1, overwrite: true });
+
+            // highlight the nearest cached node, dim the rest
+            cached.forEach((_, i) => {
+                const node = root.querySelector<SVGGElement>(`[data-cnode="${i}"]`)!;
+                const circle = node.querySelector('circle')!;
+                if (i === best) {
+                    circle.setAttribute('r', '11');
+                    circle.setAttribute('fill', '#5C9367');
+                    circle.setAttribute('stroke', '#5C9367');
+                } else {
+                    circle.setAttribute('r', '9');
+                    circle.setAttribute('fill', '#E8F2EA');
+                    circle.setAttribute('stroke', '#5C9367');
+                }
+            });
+
+            // readout
+            nearEl.textContent = near.id;
+            distEl.textContent = bestD.toFixed(2);
+            if (hit) {
+                verdictEl.textContent = 'HIT';
+                verdictEl.setAttribute('class', 'font-semibold text-mt-green');
+            } else {
+                verdictEl.textContent = 'MISS';
+                verdictEl.setAttribute('class', 'font-semibold text-mt-rose');
+            }
+        }
+
+        // free 2D dragging, continuous (no snap). Clamp inside the plane.
+        draggable(svg, query, (x, y) => {
+            qx = clamp(toUnitX(x), 0, 1.1);
+            qy = clamp(toUnitY(y), 0, 0.95);
+            render();
+        });
+
+        render();
+    });
+</script>

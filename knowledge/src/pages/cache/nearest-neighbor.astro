@@ -1,0 +1,135 @@
+---
+import '../../styles/global.css';
+import LessonLayout from '../../layouts/LessonLayout.astro';
+import LessonHeader from '../../components/LessonHeader.astro';
+import LessonNav from '../../components/LessonNav.astro';
+import InsightBox from '../../components/InsightBox.astro';
+import ExerciseBox from '../../components/ExerciseBox.astro';
+import TagBadge from '../../components/TagBadge.astro';
+import NearestDemo from '../../components/demos/NearestDemo.astro';
+---
+
+<LessonLayout title="Nearest-neighbor lookup" lessonNumber="4.3" section="Remembering Answers">
+
+    <LessonHeader lessonNumber="4.3" title="Nearest-neighbor lookup" description="How a semantic cache actually finds the closest past question: nearest-neighbor search in vector space.">
+        <TagBadge variant="concepts">concepts</TagBadge>
+        <TagBadge variant="intuition">intuition</TagBadge>
+        <TagBadge variant="default">9 min read</TagBadge>
+    </LessonHeader>
+
+    <!-- SECTION 1: hook + the demo -->
+    <section class="mb-14">
+        <h2 class="text-xl font-bold mb-4">Every question is a point on a map.</h2>
+        <p class="text-mt-muted leading-relaxed mb-4">
+            Last lesson placed each question as a point whose location captures its meaning. Questions that mean
+            similar things sit close together; unrelated ones sit far apart. A semantic cache is built on that map.
+            The cached questions are dots already on it. A new query is a new dot you drop down.
+        </p>
+        <p class="text-mt-muted leading-relaxed mb-4">
+            So "do we have a cached answer?" becomes a geometry question: which existing dot is closest to the new
+            one, and is it close enough to count? Drag the query dot below. The line snaps to whichever cached
+            question is nearest, and the dashed circle is the threshold: inside it is a hit, outside is a miss.
+        </p>
+
+        <NearestDemo />
+
+        <InsightBox>
+            <p class="text-sm">Finding a cache hit is finding the closest point. The query lands on the map, and the nearest cached question is the only candidate worth checking.</p>
+        </InsightBox>
+    </section>
+
+    <!-- SECTION 2: nearest neighbor -->
+    <section class="mb-14">
+        <h2 class="text-xl font-bold mb-4">Nearest neighbor: the single closest point.</h2>
+        <p class="text-mt-muted leading-relaxed mb-4">
+            The closest stored point to your query is called its <strong>nearest neighbor</strong>. Finding it is
+            <strong>nearest-neighbor search</strong>, and it is the engine inside every semantic cache. You take
+            the new query's point and ask: of all the cached points, which one is least far away?
+        </p>
+        <p class="text-mt-muted leading-relaxed mb-4">
+            "Least far away" needs a way to measure far, a <strong>distance</strong>. Two common ones are
+            Euclidean distance (straight-line distance, the length of the line you would draw between two dots) and
+            cosine distance (based on the angle between the two points' directions). Either way, a smaller number
+            means closer in meaning. The demo above uses plain straight-line distance so you can see it.
+        </p>
+        <p class="text-mt-muted leading-relaxed">
+            This same nearest-neighbor search is the heart of <strong>vector search</strong>, the engine behind
+            similar-item lookup, retrieval for RAG, and recommendation. It is its own deep topic (and a later
+            project on the monkway roadmap). Here we only need the one move: find the closest stored point to the
+            query.
+        </p>
+    </section>
+
+    <!-- SECTION 3: threshold as a radius -->
+    <section class="mb-14">
+        <h2 class="text-xl font-bold mb-4">The threshold is a radius around the query.</h2>
+        <p class="text-mt-muted leading-relaxed mb-4">
+            Finding the nearest point is only half the job. The nearest stored question might still be about
+            something totally different, just the least-different thing on file. So the threshold from last lesson
+            becomes a <strong>radius</strong>: a circle of "close enough" drawn around the query.
+        </p>
+        <ul class="text-mt-muted leading-relaxed mb-4 list-disc pl-6 space-y-1">
+            <li>Nearest point falls <strong>inside</strong> the radius: hit. Reuse its stored answer.</li>
+            <li>Nearest point falls <strong>outside</strong> the radius: miss. Even the closest match is too far, so go to the provider.</li>
+        </ul>
+        <p class="text-mt-muted leading-relaxed">
+            Drag the query far from every cached dot in the demo and watch the verdict flip to MISS: there is still
+            a nearest neighbor, but it sits outside the radius, so it does not count. The closest past question
+            wins only if it is inside the threshold.
+        </p>
+    </section>
+
+    <!-- SECTION 4: worked example -->
+    <section class="mb-14">
+        <h2 class="text-xl font-bold mb-4">A hit, worked by hand.</h2>
+        <p class="text-mt-muted leading-relaxed mb-4">
+            A new query lands on the map. The cache measures the distance to each stored point and keeps the
+            smallest. Say point P (a stored question) is the closest, at distance 0.07, and the threshold radius is
+            0.10:
+        </p>
+
+        <div class="bg-white border border-mt-border rounded-xl p-5 mb-4 font-mono text-sm space-y-1">
+            <div>nearest stored point = P</div>
+            <div>distance(query, P)   = <span class="text-mt-accent font-semibold">0.07</span></div>
+            <div>threshold radius     = <span class="text-mt-lav font-semibold">0.10</span></div>
+            <div>0.07 &le; 0.10 &nbsp;&rarr;&nbsp; inside the radius &nbsp;&rarr;&nbsp; <span class="text-mt-green font-semibold">HIT</span></div>
+        </div>
+
+        <p class="text-mt-muted leading-relaxed mb-4">
+            P is the nearest neighbor and it sits inside the radius, so the gateway returns P's stored answer and
+            skips the provider. Now nudge the query until the nearest distance grows to 0.14. It is still the same
+            nearest neighbor, but 0.14 is outside the 0.10 radius, so the verdict is a miss and the request goes to
+            the provider.
+        </p>
+
+        <InsightBox>
+            <p class="text-sm">A semantic cache is nearest-neighbor search plus a radius. The closest past question wins only if it falls inside the threshold; otherwise it is a miss.</p>
+        </InsightBox>
+    </section>
+
+    <ExerciseBox title="Work it out">
+        <p class="text-sm text-mt-muted">
+            Three cached points sit at distances 0.22, 0.11, and 0.09 from a new query. The threshold radius is
+            0.10. Which point is the nearest neighbor, and is the result a hit or a miss? Now the threshold is
+            loosened to 0.15. Same answer? (Answers: the nearest neighbor is the one at 0.09, a hit under both
+            thresholds. At radius 0.15 the 0.11 point would also fall inside, but nearest-neighbor search still
+            picks the single closest, 0.09.)
+        </p>
+    </ExerciseBox>
+
+    <!-- Key takeaways -->
+    <section class="mb-14">
+        <h2 class="text-xl font-bold mb-4">Key takeaways</h2>
+        <div class="space-y-3">
+            <div class="flex items-start gap-3"><div class="w-6 h-6 rounded-full bg-mt-accentLight flex items-center justify-center flex-shrink-0 mt-0.5"><span class="text-mt-accent font-bold text-xs">1</span></div><p class="text-sm">Embeddings place each question as a point, so finding a cache hit becomes finding the nearest stored point to the query (nearest-neighbor search).</p></div>
+            <div class="flex items-start gap-3"><div class="w-6 h-6 rounded-full bg-mt-accentLight flex items-center justify-center flex-shrink-0 mt-0.5"><span class="text-mt-accent font-bold text-xs">2</span></div><p class="text-sm">A distance measures how far apart two points are; the threshold is a radius, and only a nearest neighbor inside it counts as a hit.</p></div>
+            <div class="flex items-start gap-3"><div class="w-6 h-6 rounded-full bg-mt-accentLight flex items-center justify-center flex-shrink-0 mt-0.5"><span class="text-mt-accent font-bold text-xs">3</span></div><p class="text-sm">This nearest-neighbor search is the core of vector search, and it is what turns the semantic cache from an idea into something the gateway can run.</p></div>
+        </div>
+    </section>
+
+    <LessonNav
+        prevHref="/cache/semantic-cache" prevLabel="Prev: Caching by meaning"
+        nextHref="/ledger/tokens-and-cost" nextLabel="Next: Counting tokens and cost"
+    />
+
+</LessonLayout>

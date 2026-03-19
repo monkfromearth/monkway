@@ -1,0 +1,153 @@
+---
+import '../../styles/global.css';
+import LessonLayout from '../../layouts/LessonLayout.astro';
+import LessonHeader from '../../components/LessonHeader.astro';
+import LessonNav from '../../components/LessonNav.astro';
+import InsightBox from '../../components/InsightBox.astro';
+import ExerciseBox from '../../components/ExerciseBox.astro';
+import TagBadge from '../../components/TagBadge.astro';
+---
+
+<LessonLayout title="Caching by meaning" lessonNumber="4.2" section="Remembering Answers">
+
+    <LessonHeader lessonNumber="4.2" title="Caching by meaning" description="Two questions can mean the same thing in different words. A semantic cache matches meaning, not bytes.">
+        <TagBadge variant="concepts">concepts</TagBadge>
+        <TagBadge variant="default">9 min read</TagBadge>
+    </LessonHeader>
+
+    <!-- SECTION 1: the gap exact-match leaves -->
+    <section class="mb-14">
+        <h2 class="text-xl font-bold mb-4">The notebook misses questions it should recognize.</h2>
+        <p class="text-mt-muted leading-relaxed mb-4">
+            Last lesson the gatekeeper monk matched questions letter for letter. That works for true repeats, but
+            it is brittle. A traveler asks "What's the capital of France?" One minute later another asks "capital
+            city of France?" Same question, same answer, yet the exact-match notebook treats them as strangers and
+            pays the provider all over again.
+        </p>
+        <p class="text-mt-muted leading-relaxed mb-4">
+            Real users phrase things every way imaginable: different word order, synonyms, a typo, extra
+            politeness. Exact-match catches none of these near-duplicates. To reuse an answer for a question that
+            <em>means</em> the same thing, the monk needs to compare meaning instead of spelling.
+        </p>
+
+        <InsightBox>
+            <p class="text-sm">Exact-match caching only fires on identical bytes, so it misses every near-duplicate. Most repeated questions in the wild are reworded, not retyped.</p>
+        </InsightBox>
+    </section>
+
+    <!-- SECTION 2: embeddings -->
+    <section class="mb-14">
+        <h2 class="text-xl font-bold mb-4">Turn each question into a point that captures its meaning.</h2>
+        <p class="text-mt-muted leading-relaxed mb-4">
+            The trick is to stop comparing text and start comparing meaning. A special model, an
+            <strong>embedding model</strong>, reads a piece of text and returns an <strong>embedding</strong>: a
+            list of numbers (a vector) that stands for what the text means. The useful property is that text with
+            similar meaning gets similar numbers, even when the words are completely different.
+        </p>
+        <p class="text-mt-muted leading-relaxed mb-4">
+            Think of it as placing every question as a point on a map. "What's the capital of France?" and "capital
+            city of France?" land almost on top of each other, because they mean nearly the same thing. "How do I
+            reset my password?" lands far away in another part of the map. The map's geography <em>is</em> meaning:
+            close together means similar, far apart means different.
+        </p>
+
+        <InsightBox>
+            <p class="text-sm">An embedding turns text into a vector where similar meaning lands in nearby points. That lets you compare two questions by how close their points are, not by their spelling.</p>
+        </InsightBox>
+    </section>
+
+    <!-- SECTION 3: how semantic caching works -->
+    <section class="mb-14">
+        <h2 class="text-xl font-bold mb-4">Match the new question against the meanings you have seen.</h2>
+        <p class="text-mt-muted leading-relaxed mb-4">
+            A semantic cache stores, for each past question, its embedding alongside the answer. When a new request
+            arrives, the gateway embeds it too and asks: is any stored question's point close enough to this new
+            one? It needs three pieces to answer that:
+        </p>
+        <ul class="text-mt-muted leading-relaxed mb-4 list-disc pl-6 space-y-1">
+            <li>An <strong>embedding model</strong> to turn each question into a point.</li>
+            <li>A <strong>similarity measure</strong>: a number that says how close two points are. A common one is cosine similarity, which runs from 0 (unrelated) to 1 (identical meaning).</li>
+            <li>A <strong>threshold</strong>: how close counts as "the same question." Score above it, hit. Below it, miss.</li>
+        </ul>
+        <p class="text-mt-muted leading-relaxed">
+            So a hit is no longer "the bytes match." It is "the meaning is close enough," where the threshold draws
+            the line on "enough."
+        </p>
+    </section>
+
+    <!-- SECTION 4: worked similarity -->
+    <section class="mb-14">
+        <h2 class="text-xl font-bold mb-4">A hit, worked by hand.</h2>
+        <p class="text-mt-muted leading-relaxed mb-4">
+            Suppose the cache already holds the question "What's the capital of France?" with its answer. A new
+            request comes in: "capital city of France?". Embed the new question, compare it to the stored one, read
+            off the similarity:
+        </p>
+
+        <div class="bg-white border border-mt-border rounded-xl p-5 mb-4 font-mono text-sm space-y-1">
+            <div>stored:  "What's the capital of France?"</div>
+            <div>new:     "capital city of France?"</div>
+            <div>&nbsp;</div>
+            <div>similarity = <span class="text-mt-accent font-semibold">0.93</span></div>
+            <div>threshold  = <span class="text-mt-lav font-semibold">0.90</span></div>
+            <div>0.93 &ge; 0.90 &nbsp;&rarr;&nbsp; <span class="text-mt-green font-semibold">HIT</span> (reuse the stored answer)</div>
+        </div>
+
+        <p class="text-mt-muted leading-relaxed">
+            The two phrasings scored 0.93, which clears the 0.90 threshold, so the gateway returns the cached
+            answer without calling the provider. Exact-match would have missed this completely. That is the whole
+            value of semantic caching: it recognizes the same question dressed in different words.
+        </p>
+    </section>
+
+    <!-- SECTION 5: the threshold risk -->
+    <section class="mb-14">
+        <h2 class="text-xl font-bold mb-4">The threshold is a safety dial, and it cuts both ways.</h2>
+        <p class="text-mt-muted leading-relaxed mb-4">
+            The threshold decides how generous the cache is, and getting it wrong is dangerous in a way exact-match
+            never was. Exact-match can only ever return a right answer or no answer. A semantic cache can return a
+            <em>wrong</em> answer if the threshold is too loose.
+        </p>
+        <p class="text-mt-muted leading-relaxed mb-4">
+            Set the threshold too low (say 0.60) and questions that are merely related get treated as the same.
+            "What's the capital of France?" and "What's the population of France?" might score 0.7: clearly
+            different questions, but a loose cache would hand back the capital when someone asked for the
+            population. Set the threshold too high (say 0.99) and you go back to almost exact-match, catching very
+            few rewordings.
+        </p>
+        <p class="text-mt-muted leading-relaxed">
+            So you tune the threshold to balance two failures: too loose risks confidently wrong answers, too
+            tight wastes the whole point by missing real duplicates. Most systems start strict and loosen
+            carefully while watching for bad hits.
+        </p>
+
+        <InsightBox>
+            <p class="text-sm">Embed the meaning, compare to past questions, reuse when close enough. The threshold is the safety dial: too loose returns wrong answers, too tight misses real duplicates.</p>
+        </InsightBox>
+    </section>
+
+    <ExerciseBox title="Work it out">
+        <p class="text-sm text-mt-muted">
+            Your threshold is 0.90. A new question scores 0.88 against the closest stored question. Hit or miss?
+            Now your boss complains the cache misses too many obvious rewordings. You drop the threshold to 0.80.
+            What new risk did you just take on? (Answers: 0.88 is a miss, just under the line. Dropping to 0.80
+            risks returning a stored answer for a question that only looks similar, a confidently wrong hit.)
+        </p>
+    </ExerciseBox>
+
+    <!-- Key takeaways -->
+    <section class="mb-14">
+        <h2 class="text-xl font-bold mb-4">Key takeaways</h2>
+        <div class="space-y-3">
+            <div class="flex items-start gap-3"><div class="w-6 h-6 rounded-full bg-mt-accentLight flex items-center justify-center flex-shrink-0 mt-0.5"><span class="text-mt-accent font-bold text-xs">1</span></div><p class="text-sm">Semantic caching compares meaning, not bytes, so it can reuse an answer for a question worded differently.</p></div>
+            <div class="flex items-start gap-3"><div class="w-6 h-6 rounded-full bg-mt-accentLight flex items-center justify-center flex-shrink-0 mt-0.5"><span class="text-mt-accent font-bold text-xs">2</span></div><p class="text-sm">It needs an embedding model to place questions as points, a similarity measure, and a threshold for "close enough."</p></div>
+            <div class="flex items-start gap-3"><div class="w-6 h-6 rounded-full bg-mt-accentLight flex items-center justify-center flex-shrink-0 mt-0.5"><span class="text-mt-accent font-bold text-xs">3</span></div><p class="text-sm">The threshold is a safety dial: too loose returns wrong answers, too tight misses duplicates. Next we see how the cache actually finds the closest point.</p></div>
+        </div>
+    </section>
+
+    <LessonNav
+        prevHref="/cache/exact-match-cache" prevLabel="Prev: Exact-match caching"
+        nextHref="/cache/nearest-neighbor" nextLabel="Next: Nearest-neighbor lookup"
+    />
+
+</LessonLayout>
