@@ -1,0 +1,136 @@
+---
+import '../../styles/global.css';
+import LessonLayout from '../../layouts/LessonLayout.astro';
+import LessonHeader from '../../components/LessonHeader.astro';
+import LessonNav from '../../components/LessonNav.astro';
+import InsightBox from '../../components/InsightBox.astro';
+import TagBadge from '../../components/TagBadge.astro';
+import ExerciseBox from '../../components/ExerciseBox.astro';
+
+// Static budget bars. Full class strings so Tailwind keeps them (no runtime interpolation).
+const keys = [
+  { name: 'key A', used: 48, limit: 50, width: 'w-[96%]', bar: 'bg-mt-rose', note: 'near the ceiling' },
+  { name: 'key B', used: 12, limit: 50, width: 'w-[24%]', bar: 'bg-mt-green', note: 'plenty left' },
+  { name: 'key C', used: 30, limit: 50, width: 'w-[60%]', bar: 'bg-mt-accent', note: 'over halfway' },
+];
+---
+
+<LessonLayout title="Budgets and fairness" lessonNumber="5.3" section="The Ledger">
+
+    <LessonHeader lessonNumber="5.3" title="Budgets and fairness" description="Per-key spend ceilings, and making sure one heavy user does not starve everyone else.">
+        <TagBadge variant="concepts">concepts</TagBadge>
+        <TagBadge variant="default">9 min read</TagBadge>
+    </LessonHeader>
+
+    <!-- SECTION 1: hook + what a budget is -->
+    <section class="mb-14">
+        <h2 class="text-xl font-bold mb-4">A ceiling on what each key can spend.</h2>
+        <p class="text-mt-muted leading-relaxed mb-4">
+            Rate limiting holds the <em>pace</em>. A budget holds the <em>total</em>. It is a spend ceiling tied
+            to an API key: key A may spend $50 this month, and not a cent more. Each key gets its own line on
+            the ledger and its own cap.
+        </p>
+        <p class="text-mt-muted leading-relaxed mb-4">
+            The mechanism is the ledger from lesson 5.1, read backwards. That ledger has been summing the cost
+            of every request per key all along. A budget just adds a check: before a call goes out, would it
+            push this key over its ceiling? If yes, the gateway <strong>rejects or throttles</strong> it. The
+            counting was already happening; the budget gives it teeth.
+        </p>
+
+        <InsightBox>
+            <p class="text-sm">A budget is a per-key spend ceiling (say $50 a month). The gateway tracks each
+            key's spend from the cost ledger and turns a call away once it would cross the cap.</p>
+        </InsightBox>
+    </section>
+
+    <!-- SECTION 2: worked example -->
+    <section class="mb-14">
+        <h2 class="text-xl font-bold mb-4">The call that tips over.</h2>
+        <p class="text-mt-muted leading-relaxed mb-4">
+            Say key A has a $50 monthly budget and has spent $48 so far. A new request comes in that would cost
+            $3. The gateway checks before sending.
+        </p>
+
+        <div class="bg-white border border-mt-border rounded-xl p-5 mb-4 font-mono text-sm space-y-1">
+            <div>key A: spent $48 of $50</div>
+            <div>incoming call would cost $3</div>
+            <div>48 + 3 = <span class="text-mt-rose font-semibold">$51</span> &gt; $50</div>
+            <div class="pt-1 border-t border-mt-border"><span class="text-mt-rose font-semibold">over budget &rarr; rejected</span></div>
+        </div>
+
+        <p class="text-mt-muted leading-relaxed">
+            The check happens before the money is spent, not after. The point of a ceiling is that you never
+            sail past it and find out later; the gateway stops the call that would breach it.
+        </p>
+    </section>
+
+    <!-- SECTION 3: the budget bars -->
+    <section class="mb-14">
+        <h2 class="text-xl font-bold mb-4">Three keys, three ledgers.</h2>
+        <p class="text-mt-muted leading-relaxed mb-6">
+            Each key carries its own bar: how much of its budget is used against its limit. Key A is brushing
+            the ceiling and the next big call may be refused. The others have room.
+        </p>
+
+        <div class="space-y-4">
+            {keys.map((k) => (
+                <div class="bg-mt-card border border-mt-border rounded-2xl p-4">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="font-mono text-sm font-semibold">{k.name}</span>
+                        <span class="font-mono text-xs text-mt-muted">${k.used} / ${k.limit} &middot; {k.note}</span>
+                    </div>
+                    <div class="h-3 w-full rounded-full bg-stone-100 overflow-hidden">
+                        <div class={`h-3 rounded-full ${k.bar} ${k.width}`}></div>
+                    </div>
+                </div>
+            ))}
+        </div>
+    </section>
+
+    <!-- SECTION 4: fairness -->
+    <section class="mb-14">
+        <h2 class="text-xl font-bold mb-4">One heavy user should not starve the rest.</h2>
+        <p class="text-mt-muted leading-relaxed mb-4">
+            Budgets cap each key's spend. Fairness is the other half: who gets the shared capacity right now. A
+            provider gives you only so much throughput. If one tenant floods the gateway with requests, they can
+            soak up that whole allowance and leave everyone else waiting, even if no single key is over its
+            money budget.
+        </p>
+        <p class="text-mt-muted leading-relaxed">
+            The fix is to share on purpose. Per-key limits stop any one caller from hogging the line, and
+            <strong>fair scheduling</strong> takes turns across keys rather than serving whoever shouts loudest.
+            Together they keep the shared capacity actually shared, so a busy neighbor cannot crowd out a quiet
+            one.
+        </p>
+
+        <InsightBox>
+            <p class="text-sm">Budgets turn the cost ledger into a control: per-key limits keep one user from
+            spending everyone else's capacity, and fair scheduling shares the line. This is the gatekeeper's
+            last job, the ledger with teeth.</p>
+        </InsightBox>
+    </section>
+
+    <!-- Exercise -->
+    <ExerciseBox>
+        <p class="text-sm text-mt-muted leading-relaxed">Key B has a $50 budget and has spent $40. Three calls
+        are queued, each costing $5. Which of them go through, and where does the gateway stop? Then think: if
+        all three keys share one provider that can handle 100 requests a minute, why is a money budget alone not
+        enough to keep things fair?</p>
+    </ExerciseBox>
+
+    <!-- Key takeaways -->
+    <section class="mb-14 mt-14">
+        <h2 class="text-xl font-bold mb-4">Key takeaways</h2>
+        <div class="space-y-3">
+            <div class="flex items-start gap-3"><div class="w-6 h-6 rounded-full bg-mt-accentLight flex items-center justify-center flex-shrink-0 mt-0.5"><span class="text-mt-accent font-bold text-xs">1</span></div><p class="text-sm">A budget is a per-key spend ceiling, tracked from the cost ledger. When a call would push a key over its cap, the gateway rejects or throttles it before the spend happens.</p></div>
+            <div class="flex items-start gap-3"><div class="w-6 h-6 rounded-full bg-mt-accentLight flex items-center justify-center flex-shrink-0 mt-0.5"><span class="text-mt-accent font-bold text-xs">2</span></div><p class="text-sm">Key A at $48 of $50 plus a $3 call would hit $51, over the ceiling, so the call is refused. The check is before the money moves, not after.</p></div>
+            <div class="flex items-start gap-3"><div class="w-6 h-6 rounded-full bg-mt-accentLight flex items-center justify-center flex-shrink-0 mt-0.5"><span class="text-mt-accent font-bold text-xs">3</span></div><p class="text-sm">Fairness is the other half: per-key limits plus fair scheduling keep one heavy tenant from soaking up shared provider capacity. Budgets are the ledger with teeth, the gatekeeper's last job.</p></div>
+        </div>
+    </section>
+
+    <LessonNav
+        prevHref="/ledger/rate-limiting" prevLabel="Rate limiting"
+        nextHref="/glossary" nextLabel="Glossary"
+    />
+
+</LessonLayout>

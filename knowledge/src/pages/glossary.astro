@@ -1,0 +1,231 @@
+---
+import '../styles/global.css';
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+
+const terms = [
+  {
+    term: 'Adapter',
+    plain: 'The piece that translates the gateway’s one request shape into whatever fields and endpoint a given provider expects.',
+    precise: 'A per-provider translator: it maps the gateway’s unified request and response onto a specific provider’s API contract.',
+  },
+  {
+    term: 'Backoff (exponential)',
+    plain: 'Wait longer between retries, doubling the wait each time, so you stop hammering a provider that is already struggling.',
+    precise: 'Exponential backoff: the delay before attempt n grows geometrically (for example base times 2 to the power of the attempt number).',
+  },
+  {
+    term: 'Budget',
+    plain: 'A spending ceiling tied to an API key. Cross it and further calls get rejected or slowed down.',
+    precise: 'A per-key cost cap, usually over a window; once exceeded, requests are rejected (HTTP 402/429) or throttled.',
+  },
+  {
+    term: 'Cache',
+    plain: 'A store of past answers, so a repeat request is served instantly instead of going to the provider again.',
+    precise: 'A keyed store of prior responses; a lookup returns a stored result rather than re-invoking the model.',
+  },
+  {
+    term: 'Cache hit / miss',
+    plain: 'A hit means the answer was already stored. A miss means it was not, so the request goes to the provider.',
+    precise: 'Hit ratio (hits over total lookups) is the headline metric of cache effectiveness.',
+  },
+  {
+    term: 'Completion tokens',
+    plain: 'The output tokens the model generated. These usually cost more than the ones you sent in.',
+    precise: 'Output tokens billed at the completion (output) rate, typically higher than the prompt rate.',
+  },
+  {
+    term: 'Cost',
+    plain: 'Tokens times price, added up per request and written into the ledger.',
+    precise: 'Per request: prompt tokens times input price plus completion tokens times output price, summed and recorded.',
+  },
+  {
+    term: 'Deadline',
+    plain: 'The total time budget for a whole operation, counting every retry inside it.',
+    precise: 'An absolute end-time for an operation across all attempts, distinct from a single attempt’s timeout.',
+  },
+  {
+    term: 'Embedding',
+    plain: 'A list of numbers that captures the meaning of a piece of text, so similar meanings end up close together.',
+    precise: 'A dense vector produced by an embedding model; semantic similarity maps to small distance in that space.',
+  },
+  {
+    term: 'Fallback (failover)',
+    plain: 'When the chosen provider fails, automatically try the next one in your ranked list.',
+    precise: 'Failover: on error, route to the next candidate provider in priority order until one succeeds or the list runs out.',
+  },
+  {
+    term: 'Gateway (LLM gateway)',
+    plain: 'One API endpoint sitting in front of many model providers. Your app only ever talks to it.',
+    precise: 'An LLM gateway: a single unified API that fronts multiple providers and handles routing, retries, caching, and accounting.',
+  },
+  {
+    term: 'Idempotency',
+    plain: 'Doing an operation twice has the same effect as doing it once, which is what makes a retry safe.',
+    precise: 'A property where repeated identical requests produce the same end state as a single request.',
+  },
+  {
+    term: 'Idempotency key',
+    plain: 'An id the client sends so the server can spot a duplicate and return the first result instead of redoing the work.',
+    precise: 'A client-supplied unique token; the server stores the first result against it and replays it for any repeat.',
+  },
+  {
+    term: 'Jitter',
+    plain: 'Randomness added to retry waits so a crowd of clients does not retry at the exact same instant.',
+    precise: 'Random perturbation of backoff delays that de-synchronizes retries and avoids the thundering herd.',
+  },
+  {
+    term: 'Nearest-neighbor search',
+    plain: 'Finding the stored point closest to a query point in vector space. It is the core of semantic caching and vector search.',
+    precise: 'Given a query vector, return the stored vectors with smallest distance; the engine behind semantic cache and vector search.',
+  },
+  {
+    term: 'Prompt tokens',
+    plain: 'The input tokens you send: the messages and the system prompt.',
+    precise: 'Input tokens billed at the prompt (input) rate, typically lower than the completion rate.',
+  },
+  {
+    term: 'Provider',
+    plain: 'A company or service that runs the actual model, like OpenAI, Anthropic, Google, or a local model.',
+    precise: 'An upstream model service reachable through its own API; the gateway speaks to it via an adapter.',
+  },
+  {
+    term: 'Proxy (reverse proxy)',
+    plain: 'A server that takes a request and forwards it to another server on your behalf, then relays the response back.',
+    precise: 'A reverse proxy: it receives client requests, forwards them to upstream servers, and returns the upstream response.',
+  },
+  {
+    term: 'Rate limiting',
+    plain: 'Capping how many requests are allowed in a given slice of time.',
+    precise: 'Enforcing a maximum request rate per window per key or client, rejecting or queueing the overflow.',
+  },
+  {
+    term: 'Retry',
+    plain: 'Trying the same failed call again, for failures that might succeed on a second attempt.',
+    precise: 'Re-issuing a request after a transient failure (429, 5xx, timeouts); only safe for idempotent operations.',
+  },
+  {
+    term: 'Routing',
+    plain: 'Choosing which provider serves a request when more than one of them could.',
+    precise: 'The decision step that selects a provider per request from the eligible set.',
+  },
+  {
+    term: 'Routing policy',
+    plain: 'The rule that decides the choice: cheapest, fastest, highest quality, round-robin, or weighted.',
+    precise: 'A configurable strategy mapping a request to a provider by cost, latency, quality, round-robin, or weights.',
+  },
+  {
+    term: 'Semantic cache',
+    plain: 'A cache that matches questions by meaning, not by exact bytes, using embeddings and a closeness cutoff.',
+    precise: 'A cache keyed on embedding similarity above a threshold rather than exact string equality.',
+  },
+  {
+    term: 'Similarity threshold',
+    plain: 'How close two meanings must be to count as the same cached question. It is the safety dial of a semantic cache.',
+    precise: 'The minimum similarity (or maximum distance) for a semantic cache hit; too low risks wrong answers, too high lowers hit rate.',
+  },
+  {
+    term: 'Streaming (SSE)',
+    plain: 'Sending the answer token by token as it is generated, so text starts appearing right away.',
+    precise: 'Server-Sent Events: a long-lived response that emits incremental chunks as the model produces them.',
+  },
+  {
+    term: 'Time-to-first-token (TTFT)',
+    plain: 'How long until the first token of the answer shows up. Streaming makes this shorter.',
+    precise: 'TTFT: the latency from request to the first streamed token, distinct from total generation time.',
+  },
+  {
+    term: 'Timeout',
+    plain: 'The longest you are willing to wait on a single attempt before giving up on it.',
+    precise: 'A per-attempt time limit; distinct from a deadline, which spans every retry.',
+  },
+  {
+    term: 'Token',
+    plain: 'A chunk of text, roughly four characters. Models read and bill in tokens.',
+    precise: 'The unit of text a model processes and prices on; not a whole word, but a sub-word piece.',
+  },
+  {
+    term: 'Token bucket',
+    plain: 'A way to rate-limit: a bucket of permits refilled at a steady rate, one permit per request, allowing short bursts up to its size. Here &#34;tokens&#34; means permits, not text tokens.',
+    precise: 'A rate-limit algorithm: permits accrue at a fixed rate up to a capacity; each request spends one, so bursts are bounded by the bucket size.',
+  },
+  {
+    term: 'TTL (time to live)',
+    plain: 'How long a cached answer stays valid before it expires.',
+    precise: 'Time to live: the lifespan of a cache entry, after which it is treated as stale and refetched.',
+  },
+  {
+    term: 'Usage',
+    plain: 'The provider’s report of how many prompt and completion tokens a request actually used.',
+    precise: 'The usage object a provider returns (prompt, completion, and total token counts) that the ledger records.',
+  },
+  {
+    term: 'Vector',
+    plain: 'An ordered list of numbers. An embedding is a vector; the distance between two vectors measures how different two meanings are.',
+    precise: 'A point in n-dimensional space; cosine or Euclidean distance between vectors quantifies semantic difference.',
+  },
+];
+---
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Glossary · monkway</title>
+  <meta name="description" content="Every term used in the monkway course, plain English first and the precise definition second: gateway, proxy, retry, backoff, routing, caching, embeddings, tokens, and budgets." />
+  <link rel="icon" type="image/svg+xml" href={base + "/logo.svg"} />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+</head>
+<body class="font-sans text-mt-text">
+
+  <nav class="border-b border-mt-border bg-white/80 backdrop-blur-sm sticky top-0 z-50">
+    <div class="max-w-3xl mx-auto px-6 py-3 flex items-center justify-between">
+      <a href={base + "/"}><img src={base + "/logo-wordmark.svg"} alt="monkway" class="h-7" /></a>
+      <div class="flex items-center gap-5 text-sm text-mt-muted">
+        <a href={base + "/learn"} class="hover:text-mt-text transition-colors">Course map</a>
+        <a href="https://github.com/monkfromearth/monkway" class="hover:text-mt-text transition-colors">GitHub</a>
+      </div>
+    </div>
+  </nav>
+
+  <header class="max-w-3xl mx-auto px-6 pt-16 pb-10 text-center">
+    <p class="text-xs font-mono uppercase tracking-widest text-mt-accent mb-3">Reference</p>
+    <h1 class="text-4xl font-bold tracking-tight mb-4">Glossary</h1>
+    <p class="text-lg text-mt-muted leading-relaxed max-w-xl mx-auto">
+      Every term the course leans on, in plain English first and the precise definition right after.
+    </p>
+  </header>
+
+  <main class="max-w-3xl mx-auto px-6 pb-16">
+    <dl>
+      {terms.map((t) => (
+        <div class="bg-mt-card border border-mt-border rounded-xl p-5 mb-3">
+          <dt class="font-bold mb-1" set:html={t.term} />
+          <dd class="text-mt-text leading-relaxed mb-1" set:html={t.plain} />
+          <dd class="text-sm text-mt-muted leading-relaxed" set:html={t.precise} />
+        </div>
+      ))}
+    </dl>
+
+    <div class="flex items-center justify-between mt-10 pt-6 border-t border-mt-border text-sm">
+      <a href={base + "/ledger/budgets-and-fairness"} class="text-mt-muted hover:text-mt-accent transition-colors">
+        Back: Budgets and fairness
+      </a>
+      <a href={base + "/learn"} class="text-mt-muted hover:text-mt-accent transition-colors">
+        Course map
+      </a>
+    </div>
+  </main>
+
+  <footer class="border-t border-mt-border py-8 text-center text-mt-muted text-sm">
+    <p>
+      Built by <a href="https://monkfrom.earth" class="text-mt-accent hover:underline">Sameer Khan (@monkfromearth)</a>
+      &middot; part of the <a href="https://github.com/monkfromearth" class="text-mt-accent hover:underline">monk</a> family
+      &middot; <a href="https://github.com/monkfromearth/monkway" class="text-mt-accent hover:underline">source</a>
+    </p>
+  </footer>
+
+</body>
+</html>

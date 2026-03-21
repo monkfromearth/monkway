@@ -1,0 +1,129 @@
+---
+import '../../styles/global.css';
+import LessonLayout from '../../layouts/LessonLayout.astro';
+import LessonHeader from '../../components/LessonHeader.astro';
+import LessonNav from '../../components/LessonNav.astro';
+import InsightBox from '../../components/InsightBox.astro';
+import TagBadge from '../../components/TagBadge.astro';
+import Formula from '../../components/Formula.astro';
+import ExerciseBox from '../../components/ExerciseBox.astro';
+---
+
+<LessonLayout title="Counting tokens and cost" lessonNumber="5.1" section="The Ledger">
+
+    <LessonHeader lessonNumber="5.1" title="Counting tokens and cost" description="Providers bill by the token. To track cost, the gateway counts the tokens going in and the tokens coming out.">
+        <TagBadge variant="concepts">concepts</TagBadge>
+        <TagBadge variant="default">8 min read</TagBadge>
+    </LessonHeader>
+
+    <!-- SECTION 1: hook + what a token is -->
+    <section class="mb-14">
+        <h2 class="text-xl font-bold mb-4">Text is sold in chunks, not words.</h2>
+        <p class="text-mt-muted leading-relaxed mb-4">
+            A taxi charges by the mile, not by the trip. Models charge by the <strong>token</strong>: a small
+            chunk of text, roughly four characters, about three quarters of a word. "Gatekeeper" might be one
+            token or two; a long rare word splits into several. You do not have to count them by hand, but you
+            do have to know they are the unit on the meter.
+        </p>
+        <p class="text-mt-muted leading-relaxed mb-4">
+            Every request has two piles of tokens. The <strong>prompt tokens</strong> are everything you send
+            in: the system message, the history, the user's question. The <strong>completion tokens</strong>
+            are what the model writes back. Both are counted, and here is the catch worth remembering: they are
+            priced separately, and the output side usually costs more than the input side.
+        </p>
+
+        <InsightBox>
+            <p class="text-sm">A token is a chunk of text, about four characters. Each request has
+            <strong>prompt tokens</strong> (what you send) and <strong>completion tokens</strong> (what comes
+            back), and the two are billed at different rates.</p>
+        </InsightBox>
+    </section>
+
+    <!-- SECTION 2: the cost formula -->
+    <section class="mb-14">
+        <h2 class="text-xl font-bold mb-4">The cost of one request.</h2>
+        <p class="text-mt-muted leading-relaxed mb-4">
+            Once you know how many tokens went each way, the bill is just two multiplications added together.
+            Prices are quoted per thousand tokens, so each side is its token count times its rate.
+        </p>
+
+        <Formula caption="prices are per 1000 tokens, and the two sides use different rates">
+            cost <span class="op">=</span> prompt_tokens <span class="op">&times;</span> input_price
+            <span class="op">+</span> completion_tokens <span class="op">&times;</span> output_price
+        </Formula>
+
+        <p class="text-mt-muted leading-relaxed">
+            That is the whole idea. The hard part is not the arithmetic; it is making sure the counts are
+            honest. Which is why the gateway does not guess them.
+        </p>
+    </section>
+
+    <!-- SECTION 3: worked example -->
+    <section class="mb-14">
+        <h2 class="text-xl font-bold mb-4">Work one out by hand.</h2>
+        <p class="text-mt-muted leading-relaxed mb-4">
+            Say a request used <strong>1000 prompt tokens</strong> and <strong>500 completion tokens</strong>.
+            Take an input rate of $0.50 per 1000 tokens and an output rate of $1.50 per 1000 tokens. These
+            numbers are illustrative, not a real quote; treat them as round figures to follow the math.
+        </p>
+
+        <div class="bg-white border border-mt-border rounded-xl p-5 mb-4 font-mono text-sm space-y-1">
+            <div>input&nbsp;&nbsp;= 1000 / 1000 &times; $0.50 = <span class="text-mt-accent font-semibold">$0.50</span></div>
+            <div>output = &nbsp;500 / 1000 &times; $1.50 = <span class="text-mt-lav font-semibold">$0.75</span></div>
+            <div class="pt-1 border-t border-mt-border">total&nbsp;&nbsp;= $0.50 + $0.75 = <span class="text-mt-green font-semibold">$1.25</span></div>
+        </div>
+
+        <p class="text-mt-muted leading-relaxed">
+            Notice the 500 output tokens cost more than the 1000 input tokens. Half the count, but a higher
+            rate, so the output side carries more of the bill. That asymmetry is why output-heavy work (long
+            answers, generated code) gets expensive faster than it looks.
+        </p>
+    </section>
+
+    <!-- SECTION 4: where the counts come from -->
+    <section class="mb-14">
+        <h2 class="text-xl font-bold mb-4">The gateway reads the count, it does not invent it.</h2>
+        <p class="text-mt-muted leading-relaxed mb-4">
+            When the provider replies, it includes a small <strong>usage</strong> block alongside the answer:
+            how many prompt tokens it charged you for, and how many completion tokens it produced. The gateway
+            reads those two numbers straight from the response, applies the rates, and writes the result to its
+            <strong>ledger</strong>: a running record of who called, what it cost, and when.
+        </p>
+        <p class="text-mt-muted leading-relaxed">
+            Using the provider's own count matters. If the gateway guessed token counts on its own, its numbers
+            would drift from the actual bill. Reading the usage block keeps the ledger matched to what you are
+            really charged. That ledger is the foundation for everything in this unit: limit how fast requests
+            flow (next lesson) and cap how much each key can spend (the one after).
+        </p>
+
+        <InsightBox>
+            <p class="text-sm">Cost is tokens times price, counted per request. The provider returns a
+            <strong>usage</strong> block; the gateway reads it, applies the rates, and records the cost in its
+            ledger. It reads the count, it never guesses it.</p>
+        </InsightBox>
+    </section>
+
+    <!-- Exercise -->
+    <ExerciseBox>
+        <p class="text-sm text-mt-muted leading-relaxed">A request used 2000 prompt tokens and 1000 completion
+        tokens, at the same rates ($0.50 in, $1.50 out per 1000). What does it cost? Then ask: if you cut the
+        prompt in half but the answer stayed the same length, how much would you save, and why is the saving
+        smaller than you might hope?</p>
+    </ExerciseBox>
+
+    <!-- Key takeaways -->
+    <section class="mb-14 mt-14">
+        <h2 class="text-xl font-bold mb-4">Key takeaways</h2>
+        <div class="space-y-3">
+            <div class="flex items-start gap-3"><div class="w-6 h-6 rounded-full bg-mt-accentLight flex items-center justify-center flex-shrink-0 mt-0.5"><span class="text-mt-accent font-bold text-xs">1</span></div><p class="text-sm">Models bill by the token, a chunk of about four characters. Each request has prompt tokens (input) and completion tokens (output), priced separately, with output usually the dearer of the two.</p></div>
+            <div class="flex items-start gap-3"><div class="w-6 h-6 rounded-full bg-mt-accentLight flex items-center justify-center flex-shrink-0 mt-0.5"><span class="text-mt-accent font-bold text-xs">2</span></div><p class="text-sm">Cost = prompt_tokens times input_price plus completion_tokens times output_price. For 1000 in and 500 out at $0.50 and $1.50 per 1000, that is $0.50 + $0.75 = $1.25.</p></div>
+            <div class="flex items-start gap-3"><div class="w-6 h-6 rounded-full bg-mt-accentLight flex items-center justify-center flex-shrink-0 mt-0.5"><span class="text-mt-accent font-bold text-xs">3</span></div><p class="text-sm">The provider returns a usage block; the gateway reads those counts, applies the rates, and writes the cost to its ledger. That ledger feeds rate limiting and budgets, the next two lessons.</p></div>
+        </div>
+    </section>
+
+    <LessonNav
+        prevHref="/cache/nearest-neighbor" prevLabel="Nearest-neighbor lookup"
+        nextHref="/ledger/rate-limiting" nextLabel="Rate limiting"
+    />
+
+</LessonLayout>

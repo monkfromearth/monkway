@@ -1,0 +1,125 @@
+---
+import '../../styles/global.css';
+import LessonLayout from '../../layouts/LessonLayout.astro';
+import LessonHeader from '../../components/LessonHeader.astro';
+import LessonNav from '../../components/LessonNav.astro';
+import InsightBox from '../../components/InsightBox.astro';
+import TagBadge from '../../components/TagBadge.astro';
+import ExerciseBox from '../../components/ExerciseBox.astro';
+import TokenBucketDemo from '../../components/demos/TokenBucketDemo.astro';
+---
+
+<LessonLayout title="Rate limiting" lessonNumber="5.2" section="The Ledger">
+
+    <LessonHeader lessonNumber="5.2" title="Rate limiting" description="Cap how fast requests flow, so one caller cannot overwhelm the gateway or a provider. The token bucket.">
+        <TagBadge variant="intuition">intuition</TagBadge>
+        <TagBadge variant="default">9 min read</TagBadge>
+    </LessonHeader>
+
+    <!-- SECTION 1: hook + the bucket idea -->
+    <section class="mb-14">
+        <h2 class="text-xl font-bold mb-4">A bucket of permits that fills back up.</h2>
+        <p class="text-mt-muted leading-relaxed mb-4">
+            Counting cost (last lesson) tells you what happened. Rate limiting decides what is allowed to happen
+            next: a cap on how fast requests may flow. One caller stuck in a loop should not be able to flood
+            the gateway or hammer a provider into rejecting everyone. So the gatekeeper holds the pace.
+        </p>
+        <p class="text-mt-muted leading-relaxed mb-4">
+            The classic way to do this is the <strong>token bucket</strong>. Picture a bucket that holds a fixed
+            number of <strong>permits</strong>. It refills at a steady rate, a few permits per second, up to its
+            size. Each request takes one permit out. If the bucket has a permit, the request goes through. If
+            the bucket is empty, the request is turned away (rejected) or made to wait (queued).
+        </p>
+
+        <InsightBox>
+            <p class="text-sm"><strong>Name clash, read carefully.</strong> Here a "token" means a
+            <strong>permit</strong> to make a request. It is NOT the text token from lesson 5.1 (the chunk of
+            words you pay for). Same word, different thing. This lesson says "permit" throughout to keep them
+            apart.</p>
+        </InsightBox>
+    </section>
+
+    <!-- SECTION 2: the demo -->
+    <section class="mb-14">
+        <h2 class="text-xl font-bold mb-4">Drag the refill rate, then spend permits.</h2>
+        <p class="text-mt-muted leading-relaxed mb-4">
+            Drag the knob to set how many permits arrive per second. Hit "Request" to spend one. Drain the
+            bucket faster than it fills and you will hit empty, and the next request flashes red: rejected. Slow
+            down to the refill rate and requests keep flowing.
+        </p>
+
+        <TokenBucketDemo />
+
+        <p class="text-mt-muted leading-relaxed">
+            The bucket size sets how big a sudden burst you tolerate; the refill rate sets the pace you settle
+            into once the burst is spent.
+        </p>
+    </section>
+
+    <!-- SECTION 3: worked example -->
+    <section class="mb-14">
+        <h2 class="text-xl font-bold mb-4">Burst now, steady after.</h2>
+        <p class="text-mt-muted leading-relaxed mb-4">
+            Take a bucket of <strong>size 10</strong> that refills at <strong>2 permits per second</strong>,
+            and say it starts full. Watch what a caller can do.
+        </p>
+
+        <div class="bg-white border border-mt-border rounded-xl p-5 mb-4 font-mono text-sm space-y-1">
+            <div>start: bucket = 10 permits</div>
+            <div>fire 10 requests at once &rarr; <span class="text-mt-green font-semibold">all 10 allowed</span>, bucket = 0</div>
+            <div>now empty &rarr; refill adds <span class="text-mt-accent font-semibold">2 / sec</span></div>
+            <div class="pt-1 border-t border-mt-border">from here on: about <span class="text-mt-lav font-semibold">2 requests / sec</span></div>
+        </div>
+
+        <p class="text-mt-muted leading-relaxed">
+            So a short burst of 10 sails through (that is the bucket's whole stored-up supply), but the long-run
+            rate is pinned to the refill: roughly 2 per second, forever. The bucket buys you slack for spikes
+            without ever letting the average run away.
+        </p>
+    </section>
+
+    <!-- SECTION 4: why this shape -->
+    <section class="mb-14">
+        <h2 class="text-xl font-bold mb-4">Why not just a hard wall?</h2>
+        <p class="text-mt-muted leading-relaxed mb-4">
+            You could instead say "no more than N per second, ever," a flat ceiling. The trouble is real traffic
+            is bursty. A page load might fire six requests in the same instant, all legitimate. A hard wall
+            rejects the honest spike along with the abuse.
+        </p>
+        <p class="text-mt-muted leading-relaxed">
+            The token bucket is gentler. It lets a burst through up to the bucket size, absorbing the spike, then
+            quietly settles everyone to the refill rate. Bursts are fine; sustained flooding is not. That is the
+            shape you usually want.
+        </p>
+
+        <InsightBox>
+            <p class="text-sm">A token bucket allows bursts up to its <strong>size</strong>, then settles to the
+            <strong>refill rate</strong>. It bounds long-run throughput without a hard wall, so honest spikes
+            pass while sustained floods are held back.</p>
+        </InsightBox>
+    </section>
+
+    <!-- Exercise -->
+    <ExerciseBox>
+        <p class="text-sm text-mt-muted leading-relaxed">A bucket of size 5 refills at 1 permit per second and
+        starts full. A caller fires 5 requests instantly, then keeps firing 1 request every second. How many of
+        the next 5 (one per second) get through? Now what changes if the bucket size were 1 instead of 5, with
+        the same refill?</p>
+    </ExerciseBox>
+
+    <!-- Key takeaways -->
+    <section class="mb-14 mt-14">
+        <h2 class="text-xl font-bold mb-4">Key takeaways</h2>
+        <div class="space-y-3">
+            <div class="flex items-start gap-3"><div class="w-6 h-6 rounded-full bg-mt-accentLight flex items-center justify-center flex-shrink-0 mt-0.5"><span class="text-mt-accent font-bold text-xs">1</span></div><p class="text-sm">Rate limiting caps how fast requests flow so one caller cannot overwhelm the gateway or a provider. The token bucket is the standard way to do it.</p></div>
+            <div class="flex items-start gap-3"><div class="w-6 h-6 rounded-full bg-mt-accentLight flex items-center justify-center flex-shrink-0 mt-0.5"><span class="text-mt-accent font-bold text-xs">2</span></div><p class="text-sm">A bucket holds permits, refills at a steady rate, and each request spends one. Empty bucket means the request is rejected or queued. (These permits are not the text tokens of lesson 5.1.)</p></div>
+            <div class="flex items-start gap-3"><div class="w-6 h-6 rounded-full bg-mt-accentLight flex items-center justify-center flex-shrink-0 mt-0.5"><span class="text-mt-accent font-bold text-xs">3</span></div><p class="text-sm">Size 10 refilling at 2 per second lets a burst of 10 through, then limits you to about 2 per second. Bursts allowed up to the size; the long-run rate is the refill. Next: per-key budgets.</p></div>
+        </div>
+    </section>
+
+    <LessonNav
+        prevHref="/ledger/tokens-and-cost" prevLabel="Counting tokens and cost"
+        nextHref="/ledger/budgets-and-fairness" nextLabel="Budgets and fairness"
+    />
+
+</LessonLayout>

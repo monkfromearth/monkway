@@ -1,0 +1,133 @@
+---
+/**
+ * TokenBucketDemo — a vertical bucket of PERMITS (not text tokens).
+ * Drag the refill knob to set permits-per-second (0..5). The bucket fills
+ * steadily at that rate up to its size (10). "Request" drains one permit;
+ * an empty bucket flashes red (rejected). Reduced motion: counts update
+ * without tweens, refill still ticks via interval.
+ */
+const W = 240, H = 220;
+const SIZE = 10;            // bucket capacity, in permits
+const bx = 40, bw = 96;     // bucket left edge + width
+const btop = 24, bbot = 196; // inner top/bottom of the liquid area
+const trackX = 200, trackTop = 30, trackBot = 190; // refill knob track
+const startRate = 2;
+---
+
+<div class="mt-demo mw-bucket-demo my-6 bg-white border border-mt-border rounded-2xl p-6"
+     data-size={SIZE} data-btop={btop} data-bbot={bbot}
+     data-tracktop={trackTop} data-trackbot={trackBot} data-trackx={trackX}>
+    <p class="text-xs uppercase tracking-wide text-mt-muted font-semibold mb-1 text-center">Drag the knob to set the refill rate, then send requests</p>
+    <p class="text-[11px] text-mt-muted text-center mb-3">These permits are not the text tokens from lesson 5.1. One permit = one allowed request.</p>
+
+    <svg viewBox={`0 0 ${W} ${H}`} class="w-full max-w-sm mx-auto block" role="img" aria-label="a bucket of permits that refills at a rate you set">
+        <!-- bucket outline -->
+        <rect x={bx} y={btop - 4} width={bw} height={bbot - btop + 8} rx="8" fill="#FBF4EE" stroke="#C96F5A" stroke-width="3" />
+        <!-- the liquid (permits), height grows from the bottom -->
+        <rect data-fill x={bx + 3} y={bbot - (startRate / SIZE) * 0} width={bw - 6} height="0" rx="5" fill="#7B6CB5" opacity="0.85" />
+        <!-- bucket label -->
+        <text x={bx + bw / 2} y={btop - 10} text-anchor="middle" font-size="10" fill="#7A7068" font-family="monospace">permits</text>
+
+        <!-- refill knob track -->
+        <line x1={trackX} y1={trackTop} x2={trackX} y2={trackBot} stroke="#EFE8E2" stroke-width="6" stroke-linecap="round" />
+        <circle data-knob cx={trackX} cy={trackBot} r="10" fill="#fff" stroke="#5C9367" stroke-width="3" class="mt-grab" />
+        <text x={trackX} y={trackBot + 22} text-anchor="middle" font-size="9" fill="#7A7068" font-family="monospace">refill</text>
+    </svg>
+
+    <p class="text-center font-mono text-sm mt-1">
+        permits: <span data-count class="text-mt-lav font-semibold">5.0</span> / 10 &nbsp;&middot;&nbsp;
+        refill: <span data-rate class="text-mt-green font-semibold">2</span>/sec
+    </p>
+
+    <div class="flex items-center justify-center gap-4 mt-3">
+        <button data-req class="text-sm font-semibold bg-mt-accent text-white rounded-lg px-4 py-2 hover:bg-mt-accent/90 transition-colors">Request</button>
+        <span data-result class="text-sm font-mono text-mt-muted">ready</span>
+    </div>
+</div>
+
+<script>
+    import { gsap, draggable, clamp, REDUCED } from '../../lib/interact';
+
+    document.querySelectorAll<HTMLElement>('.mw-bucket-demo').forEach((root) => {
+        const SIZE = Number(root.dataset.size);
+        const btop = Number(root.dataset.btop), bbot = Number(root.dataset.bbot);
+        const trackTop = Number(root.dataset.tracktop), trackBot = Number(root.dataset.trackbot);
+        const trackX = Number(root.dataset.trackx);
+
+        const svg = root.querySelector<SVGSVGElement>('svg')!;
+        const fill = root.querySelector<SVGRectElement>('[data-fill]')!;
+        const knob = root.querySelector<SVGCircleElement>('[data-knob]')!;
+        const countEl = root.querySelector<HTMLElement>('[data-count]')!;
+        const rateEl = root.querySelector<HTMLElement>('[data-rate]')!;
+        const result = root.querySelector<HTMLElement>('[data-result]')!;
+        const reqBtn = root.querySelector<HTMLButtonElement>('[data-req]')!;
+
+        // permits is fractional so the fill animates smoothly between integers.
+        let permits = 5;
+        let rate = 2; // permits per second, 0..5
+
+        const fullH = bbot - btop;
+        function paintBucket() {
+            const frac = clamp(permits / SIZE, 0, 1);
+            const h = frac * fullH;
+            fill.setAttribute('y', String(bbot - h));
+            fill.setAttribute('height', String(h));
+            countEl.textContent = permits.toFixed(1);
+        }
+
+        // knob y -> rate (top of track = max rate, bottom = 0). snap to integers 0..5.
+        const knobToRate = (y: number) => {
+            const t = clamp((trackBot - y) / (trackBot - trackTop), 0, 1);
+            return Math.round(t * 5);
+        };
+        const rateToKnobY = (r: number) => trackBot - (r / 5) * (trackBot - trackTop);
+
+        function setRate(r: number) {
+            rate = r;
+            rateEl.textContent = String(rate);
+            const to = { attr: { cy: rateToKnobY(rate) } };
+            REDUCED ? gsap.set(knob, to) : gsap.to(knob, { ...to, duration: 0.12, overwrite: true });
+        }
+
+        draggable(svg, knob, (_x, y) => setRate(knobToRate(y)));
+
+        // steady refill: add `rate` permits per second, capped at SIZE.
+        let last = performance.now();
+        const timer = window.setInterval(() => {
+            const now = performance.now();
+            const dt = (now - last) / 1000;
+            last = now;
+            if (rate > 0 && permits < SIZE) {
+                permits = clamp(permits + rate * dt, 0, SIZE);
+                paintBucket();
+            }
+        }, 100);
+
+        // clean up the timer if the demo leaves the page.
+        window.addEventListener('pagehide', () => window.clearInterval(timer), { once: true });
+
+        function request() {
+            if (permits >= 1) {
+                permits -= 1;
+                paintBucket();
+                result.textContent = 'allowed';
+                result.setAttribute('class', 'text-sm font-mono text-mt-green');
+            } else {
+                result.textContent = 'rejected: bucket empty';
+                result.setAttribute('class', 'text-sm font-mono text-mt-rose');
+                // flash the bucket red
+                if (REDUCED) {
+                    fill.setAttribute('fill', '#C96F5A');
+                    window.setTimeout(() => fill.setAttribute('fill', '#7B6CB5'), 250);
+                } else {
+                    gsap.fromTo(fill, { fill: '#C96F5A' }, { fill: '#7B6CB5', duration: 0.5, overwrite: true });
+                }
+            }
+        }
+
+        reqBtn.addEventListener('click', request);
+
+        setRate(2);
+        paintBucket();
+    });
+</script>
